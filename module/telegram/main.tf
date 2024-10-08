@@ -19,10 +19,11 @@ locals {
 
   resource_name_prefix = "${local.app}-${local.environment}-${local.stack}"
 
-  telegram_bot_token  = var.telegram_bot_token
-  twitch_redirect_url = var.twitch_redirect_url
-  twitch_client_id    = var.twitch_client_id
-  domain              = var.domain
+  telegram_bot_token     = var.telegram_bot_token
+  twitch_redirect_url    = var.twitch_redirect_url
+  twitch_client_id       = var.twitch_client_id
+  domain_api             = var.domain_api
+  domain_api_certificate = var.domain_api_certificate
 }
 
 provider "aws" {

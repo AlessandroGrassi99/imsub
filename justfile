@@ -32,6 +32,50 @@ bootstrap:
     terraform init -var="aws_profile={{ aws_profile }}"
     terraform apply -var="aws_profile={{ aws_profile }}"
 
+[group('deployment')]
+init-all *FLAGS:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    cd {{justfile_directory()}}/module 
+    terraform init \
+        -backend-config="bucket={{ app }}-terraform-state" \
+        -backend-config="dynamodb_table={{ app }}-terraform-state" \
+        -backend-config="key={{ prefix }}-all.tfstate" \
+        {{ FLAGS }}
+
+[group('deployment')]
+plan-all *FLAGS:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    cd {{justfile_directory()}}/module/ 
+    terraform plan \
+        -var="environment={{ environment }}" \
+        -var="aws_profile={{ aws_profile }}" \
+        -compact-warnings \
+        {{ FLAGS }}
+
+[group('deployment')]
+apply-all *FLAGS:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    cd {{justfile_directory()}}/module/ 
+    terraform apply \
+        -var="environment={{ environment }}" \
+        -var="aws_profile={{ aws_profile }}" \
+        -compact-warnings \
+        {{ FLAGS }}
+
+[group('deployment')]
+destroy-all *FLAGS:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    cd {{justfile_directory()}}/module/ 
+    terraform destroy \
+        -var="environment={{ environment }}" \
+        -var="aws_profile={{ aws_profile }}" \
+        -compact-warnings \
+        {{ FLAGS }}
+
 # Terraform initialization
 [group('deployment')]
 init module *FLAGS:
@@ -39,7 +83,7 @@ init module *FLAGS:
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
     module_key='{{ if module == "." { trim_end_match(replace(current_folder, "/", "-"), "-") } else { trim_end_match(replace(module, "/", "-"), "-") } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     terraform init \
         -backend-config="bucket={{ app }}-terraform-state" \
         -backend-config="dynamodb_table={{ app }}-terraform-state" \
@@ -52,7 +96,7 @@ plan module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     terraform plan \
         -var="environment={{ environment }}" \
         -var="aws_profile={{ aws_profile }}" \
@@ -64,7 +108,7 @@ apply module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     terraform apply \
         -var='environment={{ environment }}' \
         -var="aws_profile={{ aws_profile }}" \
@@ -76,7 +120,7 @@ destroy module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     terraform destroy \
         -var="environment={{ environment }}" \
         -var="aws_profile={{ aws_profile }}" \
@@ -88,7 +132,7 @@ fmt module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     terraform fmt -recursive {{ FLAGS }}
 
 # Validate the module
@@ -97,7 +141,7 @@ validate module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     terraform validate {{ FLAGS }}
 
 # Lint checks for the module
@@ -106,7 +150,7 @@ lint module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     tflint -f compact --recursive {{ FLAGS }}
 
 # Finds spelling mistakes among source code
@@ -115,7 +159,7 @@ typos module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     typos {{ FLAGS }}
 
 # Security checks for the module using tfsec
@@ -124,7 +168,7 @@ tfsec module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     tfsec --no-code {{ FLAGS }}
 
 # Security checks for the module using checkov
@@ -133,7 +177,7 @@ checkov module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     checkov -d . --compact {{ FLAGS }}
 
 # Security checks for the module using terrascan
@@ -142,7 +186,7 @@ terrascan module *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
     module='{{ if module == "." { current_folder } else { module } }}'
-    cd {{justfile_directory()}}/$module 
+    cd {{justfile_directory()}}/module/$module 
     terrascan scan {{ FLAGS }}
 
 

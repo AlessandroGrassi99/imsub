@@ -56,7 +56,7 @@ resource "namecheap_domain_records" "domain_ns" {
   nameservers = aws_route53_zone.main.name_servers
 }
 
-resource "aws_acm_certificate" "api_cert" {
+resource "aws_acm_certificate" "api" {
   domain_name       = "api.${local.domain}"
   validation_method = "DNS"
 
@@ -67,7 +67,7 @@ resource "aws_acm_certificate" "api_cert" {
 
 resource "aws_route53_record" "cert_validation" {
   for_each = {
-    for dvo in aws_acm_certificate.api_cert.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.api.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -82,13 +82,12 @@ resource "aws_route53_record" "cert_validation" {
 }
 
 resource "aws_acm_certificate_validation" "cert" {
-  certificate_arn         = aws_acm_certificate.api_cert.arn
+  certificate_arn         = aws_acm_certificate.api.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-output "api_acm_certificate_arn" {
-  description = "ARN of the ACM certificate for the API Gateway custom domain."
-  value       = aws_acm_certificate.api_cert.arn
+output "domain_api_certificate" {
+  value = aws_acm_certificate.api.arn
 }
 
 output "domain_zone_id" {

@@ -1,9 +1,26 @@
+resource "terraform_data" "build_lambda_webhook" {
+  provisioner "local-exec" {
+    command = <<EOT
+      echo 'Cleaning ${local.resource_name_prefix}-lambda-oauth-callback'
+      rm -rf ${path.module}/callback/dist/*
+      echo 'Building ${local.resource_name_prefix}-lambda-oauth-callback'
+      cd ${path.module}/callback/; npm run build
+      echo 'Built ${local.resource_name_prefix}-lambda-oauth-callback'
+    EOT
+  }
+
+  triggers_replace = [
+    filemd5("${path.module}/callback/index.ts"),
+  ]
+}
+
 resource "aws_lambda_function" "oauth_callback" {
-  function_name = "${local.resource_name_prefix}-oauth-callback"
+  function_name = "${local.resource_name_prefix}-lambda-oauth-callback"
   handler       = "index.handler"
   runtime       = "nodejs20.x"
   role          = aws_iam_role.lambda_exec_role.arn
-  filename      = "callback/dist/index.zip"
+  filename      = "${path.module}/callback/dist/index.zip"
+  source_code_hash = filemd5("${path.module}/callback/dist/index.zip")
 
   environment {
     variables = {
