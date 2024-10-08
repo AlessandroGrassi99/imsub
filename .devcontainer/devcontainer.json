@@ -1,20 +1,19 @@
 // For format details, see https://aka.ms/devcontainer.json
 {
-	"name": "AWS Terraform",
-	"image": "mcr.microsoft.com/devcontainers/typescript-node",
+	"name": "ImSub",
+	"image": "mcr.microsoft.com/vscode/devcontainers/typescript-node",
 	"features": {
 		"ghcr.io/devcontainers/features/aws-cli:1": {},
 		"ghcr.io/devcontainers/features/terraform:1": {},
 		"ghcr.io/michidk/devcontainers-features/typos:1": {},
-		"ghcr.io/guiyomh/features/just:0": {}
+		"ghcr.io/guiyomh/features/just:0": {},
+		"ghcr.io/jckimble/devcontainer-features/ngrok:3": {}
 	},
 	"mounts": [
 		// Require: aws-cli installed and configured on your host machine
-		"source=${localEnv:HOME}/.aws/,target=/home/vscode/.aws/,type=bind,consistency=delegated"
+		"source=${localEnv:HOME}/.aws/,target=/home/node/.aws/,type=bind,consistency=delegated"
 	],
 	"customizations": {
-		"jetbrains": {
-		},
 		"vscode": {
 			"extensions": [
 				"AmazonWebServices.aws-toolkit-vscode",
@@ -24,7 +23,8 @@
 				"nhoizey.gremlins",
 				"redhat.vscode-yaml",
 				"GitHub.vscode-pull-request-github",
-				"GitHub.vscode-github-actions"
+				"GitHub.vscode-github-actions",
+				"nefrob.vscode-just-syntax"
 			]
 		}
 	}
