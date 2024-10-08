@@ -15,11 +15,11 @@ resource "terraform_data" "build_lambda_webhook" {
 }
 
 resource "aws_lambda_function" "oauth_callback" {
-  function_name = "${local.resource_name_prefix}-lambda-oauth-callback"
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
-  role          = aws_iam_role.lambda_exec_role.arn
-  filename      = "${path.module}/callback/dist/index.zip"
+  function_name    = "${local.resource_name_prefix}-lambda-oauth-callback"
+  handler          = "index.handler"
+  runtime          = "nodejs20.x"
+  role             = aws_iam_role.lambda_exec_role.arn
+  filename         = "${path.module}/callback/dist/index.zip"
   source_code_hash = filemd5("${path.module}/callback/dist/index.zip")
 
   environment {

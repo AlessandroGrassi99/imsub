@@ -66,21 +66,19 @@ module "web" {
 module "telegram" {
   source = "./telegram"
 
-  environment                    = var.environment
-  aws_profile                    = var.aws_profile
-  domain_api                     = "api.${var.domain}"
-  domain_zone_id                 = module.web.domain_zone_id
-  domain_api_certificate         = module.web.domain_api_certificate
-  twitch_redirect_url            = "api.${var.domain}/twitch/auth/redirect"
-  twitch_client_id               = var.twitch_client_id
-  telegram_bot_token             = var.telegram_bot_token
+  environment         = var.environment
+  aws_profile         = var.aws_profile
+  twitch_redirect_url = "api.${var.domain}/twitch/auth/redirect" # TODO: Get from auth
+  twitch_client_id    = var.twitch_client_id
+  telegram_bot_token  = var.telegram_bot_token
+  domain_api_name     = module.web.domain_api_name
 }
 
 module "auth" {
   source = "./auth"
 
-  environment                    = var.environment
-  aws_profile                    = var.aws_profile
-  twitch_client_id               = var.twitch_client_id
-  twitch_client_secret           = var.twitch_client_id
+  environment          = var.environment
+  aws_profile          = var.aws_profile
+  twitch_client_id     = var.twitch_client_id
+  twitch_client_secret = var.twitch_client_id
 }

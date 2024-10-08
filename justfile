@@ -32,7 +32,7 @@ bootstrap:
     terraform init -var="aws_profile={{ aws_profile }}"
     terraform apply -var="aws_profile={{ aws_profile }}"
 
-[group('deployment')]
+[group('deployment-all')]
 init-all *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
@@ -43,7 +43,7 @@ init-all *FLAGS:
         -backend-config="key={{ prefix }}-all.tfstate" \
         {{ FLAGS }}
 
-[group('deployment')]
+[group('deployment-all')]
 plan-all *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
@@ -54,7 +54,7 @@ plan-all *FLAGS:
         -compact-warnings \
         {{ FLAGS }}
 
-[group('deployment')]
+[group('deployment-all')]
 apply-all *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
@@ -65,7 +65,7 @@ apply-all *FLAGS:
         -compact-warnings \
         {{ FLAGS }}
 
-[group('deployment')]
+[group('deployment-all')]
 destroy-all *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail

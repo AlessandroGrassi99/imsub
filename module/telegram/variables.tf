@@ -27,14 +27,6 @@ variable "twitch_client_id" {
   type = string
 }
 
-variable "domain_api" {
-  type = string
-}
-
-variable "domain_zone_id" {
-  type = string
-}
-
-variable "domain_api_certificate" {
+variable "domain_api_name" {
   type = string
 }

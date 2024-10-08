@@ -1,3 +1,3 @@
 output "webhook_endpoint" {
-  value = "${aws_api_gateway_deployment.webhook.invoke_url}/webhook"
+  value = "${aws_api_gateway_deployment.telegram.invoke_url}/webhook"
 }                                                           
