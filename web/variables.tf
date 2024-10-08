@@ -25,5 +25,5 @@ variable "namecheap_api_key" {
 }
 
 variable "domain" {
-  type = string  
+  type = string
 }

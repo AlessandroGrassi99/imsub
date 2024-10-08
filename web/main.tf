@@ -11,18 +11,18 @@ terraform {
 }
 
 locals {
-  environment          = var.environment
-  aws_region           = "eu-west-1"
-  aws_profile          = var.aws_profile
+  environment = var.environment
+  aws_region  = "eu-west-1"
+  aws_profile = var.aws_profile
 
-  app                  = "imsub"
-  stack                = "web"
+  app   = "imsub"
+  stack = "web"
 
   resource_name_prefix = "${local.app}-${local.environment}-${local.stack}"
 
-  namecheap_username   = var.namecheap_username
-  namecheap_api_user   = var.namecheap_username
-  namecheap_api_key    = var.namecheap_api_key
+  namecheap_username = var.namecheap_username
+  namecheap_api_user = var.namecheap_username
+  namecheap_api_key  = var.namecheap_api_key
 
   domain = var.domain
 }
@@ -92,5 +92,5 @@ output "api_acm_certificate_arn" {
 }
 
 output "domain_zone_id" {
-  value       = aws_route53_zone.main.zone_id
+  value = aws_route53_zone.main.zone_id
 }
