@@ -2,12 +2,13 @@ import { Bot, webhookCallback } from 'grammy';
 import { randomBytes } from 'crypto';
 
 const {
-    TELEGRAM_BOT_TOKEN: token = '',
-    TWITCH_REDIRECT_URL: redirectUrl = '',
-    TWITCH_CLIENT_ID: clientId = '',
+    TELEGRAM_BOT_TOKEN: token,
+    TELEGRAM_WEBHOOK_SECRET: secretToken,
+    TWITCH_REDIRECT_URL: redirectUrl,
+    TWITCH_CLIENT_ID: clientId,
 } = process.env
 
-export const bot = new Bot(token)
+export const bot = new Bot(token!);
 
 const stateStore: { [key: string]: number } = {};
 
@@ -16,8 +17,8 @@ bot.command('start', async (ctx) => {
   stateStore[state] = ctx.from?.id || 0;
 
   const scopes = ['user:read:subscriptions', 'channel:read:subscriptions'].join('+');
-  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-    redirectUrl
+  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId!}&redirect_uri=${encodeURIComponent(
+    redirectUrl!
   )}&response_type=code&scope=${scopes}&state=${state}`;
 
   await ctx.reply(`Please authenticate with Twitch: ${authUrl}`);
@@ -27,4 +28,4 @@ bot.command('start', async (ctx) => {
 //     await ctx.reply('Hi there!');
 // });
 
-export const handler = webhookCallback(bot, 'aws-lambda-async')
+export const handler = webhookCallback(bot, 'aws-lambda-async', { secretToken });

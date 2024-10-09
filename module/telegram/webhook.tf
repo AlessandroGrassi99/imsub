@@ -27,9 +27,10 @@ resource "aws_lambda_function" "webhook" {
   timeout          = 120
   environment {
     variables = {
-      TELEGRAM_BOT_TOKEN  = local.telegram_bot_token
-      TWITCH_CLIENT_ID    = local.twitch_client_id
-      TWITCH_REDIRECT_URL = local.twitch_redirect_url
+      TELEGRAM_BOT_TOKEN      = local.telegram_bot_token
+      TWITCH_CLIENT_ID        = local.twitch_client_id
+      TWITCH_REDIRECT_URL     = local.twitch_redirect_url
+      TELEGRAM_WEBHOOK_SECRET = random_password.telegram_webhook_secret.result
     }
   }
 

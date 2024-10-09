@@ -1,7 +1,9 @@
 terraform {
   required_version = ">= 1.9"
   required_providers {
-    aws = { source = "hashicorp/aws", version = "5.70.0" }
+    aws    = { source = "hashicorp/aws", version = "5.70.0" }
+    null   = { source = "hashicorp/null", version = "3.2.3" }
+    random = { source = "hashicorp/random", version = "3.6.3" }
   }
 
   backend "s3" {
@@ -28,4 +30,19 @@ locals {
 provider "aws" {
   region  = local.aws_region
   profile = local.aws_profile
+}
+
+resource "random_password" "telegram_webhook_secret" {
+  length  = 32
+  special = false
+}
+
+resource "terraform_data" "telegram_set_webhook" {
+  provisioner "local-exec" {
+    command = <<EOT
+      curl -s -F "url=https://${local.domain_api_name}/telegram/webhook" \
+      -F "secret_token=${random_password.telegram_webhook_secret.result}" \
+      https://api.telegram.org/bot${var.telegram_bot_token}/setWebhook
+    EOT
+  }
 }

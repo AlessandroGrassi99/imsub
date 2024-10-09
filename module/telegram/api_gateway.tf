@@ -17,6 +17,10 @@ resource "aws_api_gateway_method" "telegram_webhook" {
   resource_id   = aws_api_gateway_resource.telegram_webhook.id
   http_method   = "POST"
   authorization = "NONE"
+
+  request_parameters = {
+    "method.request.header.X-Telegram-Bot-Api-Secret-Token" = true
+  }
 }
 
 data "aws_iam_policy_document" "api_gateway_assume_role_policy" {
@@ -65,12 +69,13 @@ resource "aws_lambda_permission" "webhook" {
   function_name = aws_lambda_function.webhook.function_name
   principal     = "apigateway.amazonaws.com"
 
-  source_arn = "${aws_api_gateway_rest_api.telegram.execution_arn}/*/POST"
+  source_arn = "${aws_api_gateway_rest_api.telegram.execution_arn}/*/POST/webhook"
 }
 
 resource "aws_api_gateway_deployment" "telegram" {
   depends_on = [
-    aws_api_gateway_integration.telegram_webhook
+    aws_api_gateway_integration.telegram_webhook,
+    # aws_api_gateway_integration.telegram_webhook_options
   ]
 
   rest_api_id = aws_api_gateway_rest_api.telegram.id
@@ -78,6 +83,10 @@ resource "aws_api_gateway_deployment" "telegram" {
 }
 
 resource "aws_api_gateway_base_path_mapping" "telegram" {
+  depends_on = [
+    aws_api_gateway_deployment.telegram,
+  ]
+
   api_id      = aws_api_gateway_rest_api.telegram.id
   stage_name  = aws_api_gateway_deployment.telegram.stage_name
   domain_name = local.domain_api_name
