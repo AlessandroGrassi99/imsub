@@ -1,5 +1,5 @@
-resource "aws_dynamodb_table" "state" {
-  name         = "${local.resource_name_prefix}-dynamodb-table-auth-state"
+resource "aws_dynamodb_table" "states" {
+  name         = "${local.resource_name_prefix}-dynamodb-table-auth-states"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "state"
 
@@ -16,6 +16,6 @@ resource "aws_dynamodb_table" "state" {
   deletion_protection_enabled = false # TODO: to change in the future
 }
 
-output "dynamodb_table_auth_state" {
-  value = aws_dynamodb_table.state.name
+output "dynamodb_table_auth_states" {
+  value = aws_dynamodb_table.states.name
 }

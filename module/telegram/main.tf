@@ -25,7 +25,7 @@ locals {
   twitch_redirect_url       = var.twitch_redirect_url
   twitch_client_id          = var.twitch_client_id
   domain_api_name           = var.domain_api_name
-  dynamodb_table_auth_state = var.dynamodb_table_auth_state
+  dynamodb_table_auth_states = var.dynamodb_table_auth_states
 }
 
 provider "aws" {
@@ -46,4 +46,8 @@ resource "terraform_data" "telegram_set_webhook" {
       https://api.telegram.org/bot${var.telegram_bot_token}/setWebhook
     EOT
   }
+}
+
+data "aws_dynamodb_table" "auth_states" {
+  name = local.dynamodb_table_auth_states
 }

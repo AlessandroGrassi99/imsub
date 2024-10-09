@@ -21,3 +21,15 @@ variable "twitch_client_id" {
 variable "twitch_client_secret" {
   type = string
 }
+
+variable "domain_api_name" {
+  type = string
+}
+
+variable "dynamodb_table_auth_states" {
+  type = string
+}
+
+variable "dynamodb_table_users" {
+  type = string
+}

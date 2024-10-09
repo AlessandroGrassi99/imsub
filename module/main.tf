@@ -75,11 +75,11 @@ module "telegram" {
 
   environment               = var.environment
   aws_profile               = var.aws_profile
-  twitch_redirect_url       = "api.${var.domain}/twitch/auth/redirect" # TODO: Get from auth
+  twitch_redirect_url       = "api.${var.domain}/auth/callback" # TODO: Get from auth
   twitch_client_id          = var.twitch_client_id
   telegram_bot_token        = var.telegram_bot_token
   domain_api_name           = module.web.domain_api_name
-  dynamodb_table_auth_state = module.common.dynamodb_table_auth_state
+  dynamodb_table_auth_states = module.common.dynamodb_table_auth_states
 }
 
 module "auth" {
@@ -88,5 +88,8 @@ module "auth" {
   environment          = var.environment
   aws_profile          = var.aws_profile
   twitch_client_id     = var.twitch_client_id
-  twitch_client_secret = var.twitch_client_id
+  twitch_client_secret = var.twitch_client_secret
+  domain_api_name           = module.web.domain_api_name
+  dynamodb_table_auth_states = module.common.dynamodb_table_auth_states
+  dynamodb_table_users = module.common.dynamodb_table_users
 }

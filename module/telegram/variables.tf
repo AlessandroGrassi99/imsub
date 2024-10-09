@@ -31,6 +31,6 @@ variable "domain_api_name" {
   type = string
 }
 
-variable "dynamodb_table_auth_state" {
+variable "dynamodb_table_auth_states" {
   type = string
 }

@@ -29,9 +29,9 @@ resource "aws_lambda_function" "webhook" {
     variables = {
       TELEGRAM_BOT_TOKEN      = local.telegram_bot_token
       TWITCH_CLIENT_ID        = local.twitch_client_id
-      TWITCH_REDIRECT_URL     = local.twitch_redirect_url
+      TWITCH_REDIRECT_URL     = "https://${local.twitch_redirect_url}"
       TELEGRAM_WEBHOOK_SECRET = random_password.telegram_webhook_secret.result
-      DYNAMODB_TABLE_STATE    = data.aws_dynamodb_table.auth_state.name
+      DYNAMODB_TABLE_STATES    = data.aws_dynamodb_table.auth_states.name
     }
   }
 
@@ -57,7 +57,7 @@ resource "aws_iam_role" "lambda_webhook" {
 data "aws_iam_policy_document" "lambda_webhook" {
   statement {
     actions   = ["dynamodb:PutItem"]
-    resources = [data.aws_dynamodb_table.auth_state.arn]
+    resources = [data.aws_dynamodb_table.auth_states.arn]
     effect    = "Allow"
   }
 
@@ -76,8 +76,4 @@ resource "aws_iam_role_policy" "lambda_webhook" {
   name   = "${local.resource_name_prefix}-lambda-webhook-role-policy"
   role   = aws_iam_role.lambda_webhook.id
   policy = data.aws_iam_policy_document.lambda_webhook.json
-}
-
-data "aws_dynamodb_table" "auth_state" {
-  name = local.dynamodb_table_auth_state
 }

@@ -1,11 +1,12 @@
-resource "terraform_data" "build_lambda_webhook" {
+resource "terraform_data" "build_lambda_twitch_callback" {
   provisioner "local-exec" {
     command = <<EOT
-      echo 'Cleaning ${local.resource_name_prefix}-lambda-oauth-callback'
-      rm -rf ${path.module}/callback/dist/*
-      echo 'Building ${local.resource_name_prefix}-lambda-oauth-callback'
-      cd ${path.module}/callback/; npm run build
-      echo 'Built ${local.resource_name_prefix}-lambda-oauth-callback'
+      cd ${path.module}/callback/;
+      echo 'Cleaning ${local.resource_name_prefix}-lambda-twitch-callback'
+      npm run clean
+      echo 'Building ${local.resource_name_prefix}-lambda-twitch-callback'
+      npm run build
+      echo 'Built ${local.resource_name_prefix}-lambda-twitch-callback'
     EOT
   }
 
@@ -14,72 +15,73 @@ resource "terraform_data" "build_lambda_webhook" {
   ]
 }
 
-resource "aws_lambda_function" "oauth_callback" {
-  function_name    = "${local.resource_name_prefix}-lambda-oauth-callback"
+resource "aws_lambda_function" "twitch_callback" {
+  function_name    = "${local.resource_name_prefix}-lambda-twitch-callback"
   handler          = "index.handler"
   runtime          = "nodejs20.x"
-  role             = aws_iam_role.lambda_exec_role.arn
+  role             = aws_iam_role.lambda_twitch_callback.arn
   filename         = "${path.module}/callback/dist/index.zip"
   source_code_hash = filemd5("${path.module}/callback/dist/index.zip")
 
   environment {
     variables = {
-      TWITCH_CLIENT_ID     = local.twitch_client_id
-      TWITCH_CLIENT_SECRET = local.twitch_client_secret
-      DYNAMODB_TABLE_NAME  = aws_dynamodb_table.twitch_tokens.name
+      TWITCH_CLIENT_ID      = local.twitch_client_id
+      TWITCH_CLIENT_SECRET  = local.twitch_client_secret
+      TWITCH_REDIRECT_URL   = "https://${local.domain_api_name}/auth/callback"
+      DYNAMODB_TABLE_STATES = data.aws_dynamodb_table.auth_states.name
+      DYNAMODB_TABLE_USERS  = data.aws_dynamodb_table.users.name
     }
   }
 }
 
-resource "aws_api_gateway_rest_api" "oauth_api" {
-  name = "${local.resource_name_prefix}-oauth-api"
+data "aws_iam_policy_document" "lambda_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
 }
 
-resource "aws_api_gateway_resource" "oauth_resource" {
-  rest_api_id = aws_api_gateway_rest_api.oauth_api.id
-  parent_id   = aws_api_gateway_rest_api.oauth_api.root_resource_id
-  path_part   = "oauth2"
+resource "aws_iam_role" "lambda_twitch_callback" {
+  name               = "${local.resource_name_prefix}-lambda-twitch-callback-role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
 }
 
-resource "aws_api_gateway_method" "oauth_method" {
-  rest_api_id   = aws_api_gateway_rest_api.oauth_api.id
-  resource_id   = aws_api_gateway_resource.oauth_resource.id
-  http_method   = "GET"
-  authorization = "NONE"
+data "aws_iam_policy_document" "lambda_twitch_callback" {
+  statement {
+    actions   = ["dynamodb:GetItem", "dynamodb:DeleteItem"]
+    resources = [data.aws_dynamodb_table.auth_states.arn]
+    effect    = "Allow"
+  }
+
+  statement {
+    actions   = ["dynamodb:PutItem"]
+    resources = [data.aws_dynamodb_table.users.arn]
+    effect    = "Allow"
+  }
+
+  statement {
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["arn:aws:logs:*:*:*"]
+    effect    = "Allow"
+  }
+
+  # statement {
+  #   actions   = ["dynamodb:PutItem", "dynamodb:GetItem"]
+  #   resources = [aws_dynamodb_table.twitch_tokens.arn]
+  #   effect   = "Allow"
+  # }
 }
 
-resource "aws_api_gateway_integration" "oauth_integration" {
-  rest_api_id             = aws_api_gateway_rest_api.oauth_api.id
-  resource_id             = aws_api_gateway_resource.oauth_resource.id
-  http_method             = aws_api_gateway_method.oauth_method.http_method
-  integration_http_method = "POST"
-  type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.oauth_callback.invoke_arn
-}
-
-resource "aws_lambda_permission" "api_gateway_invoke" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.oauth_callback.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.oauth_api.execution_arn}/*/*"
-}
-
-resource "aws_iam_role" "lambda_exec_role" {
-  name = "${local.resource_name_prefix}-lambda-exec-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "lambda.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_policy_attachment" "lambda_basic_execution" {
-  name       = "${local.resource_name_prefix}-lambda-basic-execution"
-  roles      = [aws_iam_role.lambda_exec_role.name]
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+resource "aws_iam_role_policy" "lambda_twitch_callback" {
+  name   = "${local.resource_name_prefix}-lambda-twitch-callback-role-policy"
+  role   = aws_iam_role.lambda_twitch_callback.id
+  policy = data.aws_iam_policy_document.lambda_twitch_callback.json
 }

@@ -8,7 +8,7 @@ const {
     TELEGRAM_WEBHOOK_SECRET: secretToken,
     TWITCH_REDIRECT_URL: redirectUrl,
     TWITCH_CLIENT_ID: clientId,
-    DYNAMODB_TABLE_STATE: tableState,
+    DYNAMODB_TABLE_STATES: tableState,
 } = process.env
 
 export const bot = new Bot(token!);

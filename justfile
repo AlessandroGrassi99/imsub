@@ -44,6 +44,13 @@ init-all *FLAGS:
         {{ FLAGS }}
 
 [group('deployment-all')]
+pa-all *FLAGS:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    just plan-all {{ FLAGS }}
+    just apply-all {{ FLAGS }}
+
+[group('deployment-all')]
 plan-all *FLAGS:
     #!/usr/bin/env bash
     set -euxo pipefail
@@ -62,7 +69,7 @@ apply-all *FLAGS:
     terraform apply \
         -var="environment={{ environment }}" \
         -var="aws_profile={{ aws_profile }}" \
-        -compact-warnings \
+        -compact-warnings -auto-approve \
         {{ FLAGS }}
 
 [group('deployment-all')]
