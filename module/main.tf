@@ -53,6 +53,13 @@ variable "twitch_client_secret" {
   sensitive = true
 }
 
+module "common" {
+  source = "./common"
+
+  environment = var.environment
+  aws_profile = var.aws_profile
+}
+
 module "web" {
   source = "./web"
 
@@ -66,12 +73,13 @@ module "web" {
 module "telegram" {
   source = "./telegram"
 
-  environment         = var.environment
-  aws_profile         = var.aws_profile
-  twitch_redirect_url = "api.${var.domain}/twitch/auth/redirect" # TODO: Get from auth
-  twitch_client_id    = var.twitch_client_id
-  telegram_bot_token  = var.telegram_bot_token
-  domain_api_name     = module.web.domain_api_name
+  environment               = var.environment
+  aws_profile               = var.aws_profile
+  twitch_redirect_url       = "api.${var.domain}/twitch/auth/redirect" # TODO: Get from auth
+  twitch_client_id          = var.twitch_client_id
+  telegram_bot_token        = var.telegram_bot_token
+  domain_api_name           = module.web.domain_api_name
+  dynamodb_table_auth_state = module.common.dynamodb_table_auth_state
 }
 
 module "auth" {

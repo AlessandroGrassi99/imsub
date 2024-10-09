@@ -13,24 +13,3 @@ variable "aws_profile" {
   description = "AWS profile to use"
   type        = string
 }
-
-variable "telegram_bot_token" {
-  type      = string
-  sensitive = true
-}
-
-variable "twitch_redirect_url" {
-  type = string
-}
-
-variable "twitch_client_id" {
-  type = string
-}
-
-variable "domain_api_name" {
-  type = string
-}
-
-variable "dynamodb_table_auth_state" {
-  type = string
-}

@@ -31,6 +31,7 @@ resource "aws_lambda_function" "webhook" {
       TWITCH_CLIENT_ID        = local.twitch_client_id
       TWITCH_REDIRECT_URL     = local.twitch_redirect_url
       TELEGRAM_WEBHOOK_SECRET = random_password.telegram_webhook_secret.result
+      DYNAMODB_TABLE_STATE    = data.aws_dynamodb_table.auth_state.name
     }
   }
 
@@ -51,7 +52,32 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
 resource "aws_iam_role" "lambda_webhook" {
   name               = "${local.resource_name_prefix}-lambda-webhook-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  ]
+}
+
+data "aws_iam_policy_document" "lambda_webhook" {
+  statement {
+    actions   = ["dynamodb:PutItem"]
+    resources = [data.aws_dynamodb_table.auth_state.arn]
+    effect    = "Allow"
+  }
+
+  statement {
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["arn:aws:logs:*:*:*"]
+    effect    = "Allow"
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_webhook" {
+  name   = "${local.resource_name_prefix}-lambda-webhook-role-policy"
+  role   = aws_iam_role.lambda_webhook.id
+  policy = data.aws_iam_policy_document.lambda_webhook.json
+}
+
+data "aws_dynamodb_table" "auth_state" {
+  name = local.dynamodb_table_auth_state
 }
