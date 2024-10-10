@@ -35,7 +35,7 @@ data "aws_iam_policy_document" "api_gateway_assume_role_policy" {
 }
 
 resource "aws_iam_role" "api_gateway_telegram_webhook" {
-  name               = "${local.resource_name_prefix}-api-gateway-role"
+  name               = "${local.resource_name_prefix}-api-gateway-telegram-webhook-role"
   assume_role_policy = data.aws_iam_policy_document.api_gateway_assume_role_policy.json
 }
 
@@ -48,7 +48,7 @@ data "aws_iam_policy_document" "api_gateway_telegram" {
 }
 
 resource "aws_iam_role_policy" "api_gateway_webhook" {
-  name   = "${local.resource_name_prefix}-api-gateway-role-policy"
+  name   = "${local.resource_name_prefix}-api-gateway-telegram-webhook-role-policy"
   role   = aws_iam_role.api_gateway_telegram_webhook.id
   policy = data.aws_iam_policy_document.api_gateway_telegram.json
 }

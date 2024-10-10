@@ -12,6 +12,8 @@ resource "terraform_data" "build_lambda_twitch_callback" {
 
   triggers_replace = [
     filemd5("${path.module}/callback/index.ts"),
+    filemd5("${path.module}/callback/package.json"),
+    filemd5("${path.module}/callback/package-lock.json"),
   ]
 }
 
@@ -58,8 +60,11 @@ data "aws_iam_policy_document" "lambda_twitch_callback" {
   }
 
   statement {
-    actions   = ["dynamodb:PutItem"]
-    resources = [data.aws_dynamodb_table.users.arn]
+    actions   = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query"]
+    resources = [
+      data.aws_dynamodb_table.users.arn,
+      "${data.aws_dynamodb_table.users.arn}/index/*"
+    ]
     effect    = "Allow"
   }
 
@@ -72,12 +77,6 @@ data "aws_iam_policy_document" "lambda_twitch_callback" {
     resources = ["arn:aws:logs:*:*:*"]
     effect    = "Allow"
   }
-
-  # statement {
-  #   actions   = ["dynamodb:PutItem", "dynamodb:GetItem"]
-  #   resources = [aws_dynamodb_table.twitch_tokens.arn]
-  #   effect   = "Allow"
-  # }
 }
 
 resource "aws_iam_role_policy" "lambda_twitch_callback" {
