@@ -53,6 +53,10 @@ variable "twitch_client_secret" {
   sensitive = true
 }
 
+variable "twitch_auth_redirect" {
+  type = string
+}
+
 module "common" {
   source = "./common"
 
@@ -73,23 +77,24 @@ module "web" {
 module "telegram" {
   source = "./telegram"
 
-  environment               = var.environment
-  aws_profile               = var.aws_profile
-  twitch_redirect_url       = "api.${var.domain}/auth/callback" # TODO: Get from auth
-  twitch_client_id          = var.twitch_client_id
-  telegram_bot_token        = var.telegram_bot_token
-  domain_api_name           = module.web.domain_api_name
+  environment                = var.environment
+  aws_profile                = var.aws_profile
+  twitch_redirect_url        = "api.${var.domain}/auth/callback" # TODO: Get from auth
+  twitch_client_id           = var.twitch_client_id
+  telegram_bot_token         = var.telegram_bot_token
+  domain_api_name            = module.web.domain_api_name
   dynamodb_table_auth_states = module.common.dynamodb_table_auth_states
 }
 
 module "auth" {
   source = "./auth"
 
-  environment          = var.environment
-  aws_profile          = var.aws_profile
-  twitch_client_id     = var.twitch_client_id
-  twitch_client_secret = var.twitch_client_secret
-  domain_api_name           = module.web.domain_api_name
+  environment                = var.environment
+  aws_profile                = var.aws_profile
+  twitch_client_id           = var.twitch_client_id
+  twitch_client_secret       = var.twitch_client_secret
+  twitch_auth_redirect       = var.twitch_auth_redirect
+  domain_api_name            = module.web.domain_api_name
   dynamodb_table_auth_states = module.common.dynamodb_table_auth_states
-  dynamodb_table_users = module.common.dynamodb_table_users
+  dynamodb_table_users       = module.common.dynamodb_table_users
 }

@@ -15,9 +15,9 @@ resource "aws_dynamodb_table" "users" {
   }
 
   global_secondary_index {
-    name               = "twitch_id-index"
-    hash_key           = "twitch_id"
-    projection_type    = "ALL"
+    name            = "twitch_id-index"
+    hash_key        = "twitch_id"
+    projection_type = "ALL"
   }
 }
 

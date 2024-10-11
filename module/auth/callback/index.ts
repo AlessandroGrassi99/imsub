@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { SQSEvent, SQSHandler } from 'aws-lambda';
 import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
@@ -19,13 +19,14 @@ const DYNAMODB_TABLE_USERS = process.env.DYNAMODB_TABLE_USERS!;
 const ddbClient = new DynamoDBClient({ region: AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler: SQSHandler = async (event: SQSEvent): Promise<void> => {
   try {
-    const queryParams = event.queryStringParameters;
+    console.log('Event', event);
+    const body = JSON.parse(event.Records[0].body);
+    console.log(body);
+    const queryParams = body.params.querystring;
     if (!queryParams) {
-      return badRequest('Missing query parameters.');
+      throw new Error('Missing query parameters.');
     }
     console.log('Query parameters:', queryParams);
 
@@ -54,13 +55,9 @@ export const handler = async (
     );
     console.log('User data saved');
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'Authorization successful.' }),
-    };
+    console.log('Authorization successful');
   } catch (err) {
     console.error('Error during OAuth callback handling:', err);
-    return serverError('Internal server error.');
   }
 };
 
@@ -220,14 +217,14 @@ async function saveUserData(
   await docClient.send(transactWriteCommand);
 }
 
-function badRequest(message: string): APIGatewayProxyResult {
+function badRequest(message: string) {
   return {
     statusCode: 400,
     body: JSON.stringify({ message }),
   };
 }
 
-function serverError(message: string): APIGatewayProxyResult {
+function serverError(message: string) {
   return {
     statusCode: 500,
     body: JSON.stringify({ message }),

@@ -60,12 +60,12 @@ data "aws_iam_policy_document" "lambda_twitch_callback" {
   }
 
   statement {
-    actions   = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query"]
+    actions = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query"]
     resources = [
       data.aws_dynamodb_table.users.arn,
       "${data.aws_dynamodb_table.users.arn}/index/*"
     ]
-    effect    = "Allow"
+    effect = "Allow"
   }
 
   statement {
@@ -75,6 +75,16 @@ data "aws_iam_policy_document" "lambda_twitch_callback" {
       "logs:PutLogEvents"
     ]
     resources = ["arn:aws:logs:*:*:*"]
+    effect    = "Allow"
+  }
+
+  statement {
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes"
+    ]
+    resources = [aws_sqs_queue.twitch_callback.arn]
     effect    = "Allow"
   }
 }

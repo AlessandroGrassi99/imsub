@@ -21,10 +21,10 @@ locals {
 
   resource_name_prefix = "${local.app}-${local.environment}-${local.stack}"
 
-  telegram_bot_token        = var.telegram_bot_token
-  twitch_redirect_url       = var.twitch_redirect_url
-  twitch_client_id          = var.twitch_client_id
-  domain_api_name           = var.domain_api_name
+  telegram_bot_token         = var.telegram_bot_token
+  twitch_redirect_url        = var.twitch_redirect_url
+  twitch_client_id           = var.twitch_client_id
+  domain_api_name            = var.domain_api_name
   dynamodb_table_auth_states = var.dynamodb_table_auth_states
 }
 

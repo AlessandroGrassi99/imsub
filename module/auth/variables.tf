@@ -22,6 +22,10 @@ variable "twitch_client_secret" {
   type = string
 }
 
+variable "twitch_auth_redirect" {
+  type = string
+}
+
 variable "domain_api_name" {
   type = string
 }
