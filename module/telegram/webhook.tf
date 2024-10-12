@@ -23,7 +23,7 @@ resource "aws_lambda_function" "webhook" {
   role = aws_iam_role.lambda_webhook.arn
 
   filename         = "${path.module}/webhook/dist/index.zip"
-  source_code_hash = filemd5("${path.module}/webhook/dist/index.zip")
+  source_code_hash = filebase64sha256("${path.module}/webhook/dist/index.zip")
   timeout          = 120
   
   environment {

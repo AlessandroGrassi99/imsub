@@ -23,7 +23,7 @@ resource "aws_lambda_function" "twitch_callback" {
   runtime          = "nodejs20.x"
   role             = aws_iam_role.lambda_twitch_callback.arn
   filename         = "${path.module}/callback/dist/index.zip"
-  source_code_hash = filemd5("${path.module}/callback/dist/index.zip")
+  source_code_hash = filebase64sha256("${path.module}/callback/dist/index.zip")
 
   environment {
     variables = {

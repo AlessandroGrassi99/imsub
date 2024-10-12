@@ -23,7 +23,7 @@ resource "aws_lambda_function" "state_deleted" {
   role = aws_iam_role.lambda_state_deleted.arn
 
   filename         = "${path.module}/state_deleted/dist/index.zip"
-  source_code_hash = filemd5("${path.module}/state_deleted/dist/index.zip")
+  source_code_hash = filebase64sha256("${path.module}/state_deleted/dist/index.zip")
   timeout          = 5
   
   environment {
