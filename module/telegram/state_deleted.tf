@@ -1,21 +1,21 @@
 resource "terraform_data" "builder_lambda_state_deleted" {
   provisioner "local-exec" {
-    working_dir = "${path.module}/state_deleted/"
+    working_dir = "${path.module}/lambda_state_deleted/"
     command = "npm run build"
   }
 
   triggers_replace = {
-    index    = filebase64sha256("${path.module}/state_deleted/index.ts"),
-    package  = filebase64sha256("${path.module}/state_deleted/package.json"),
-    lock     = filebase64sha256("${path.module}/state_deleted/package-lock.json"),
-    tscongig = filebase64sha256("${path.module}/state_deleted/tsconfig.json"),
+    index    = filebase64sha256("${path.module}/lambda_state_deleted/index.ts"),
+    package  = filebase64sha256("${path.module}/lambda_state_deleted/package.json"),
+    lock     = filebase64sha256("${path.module}/lambda_state_deleted/package-lock.json"),
+    tscongig = filebase64sha256("${path.module}/lambda_state_deleted/tsconfig.json"),
   }
 }
 
 data "archive_file" "archiver_lambda_state_deleted" {
   type        = "zip"
-  source_dir  = "${path.module}/state_deleted/dist/"
-  output_path = "${path.module}/state_deleted/dist/dist.zip"
+  source_dir  = "${path.module}/lambda_state_deleted/dist/"
+  output_path = "${path.module}/lambda_state_deleted/dist/dist.zip"
   excludes    = ["dist.zip"]
 
   depends_on = [
@@ -102,11 +102,12 @@ resource "aws_lambda_event_source_mapping" "example" {
   function_name     = aws_lambda_function.state_deleted.function_name
   starting_position = "LATEST"
 
-  filter_criteria {
-    filter {
-      pattern = jsonencode({
-        eventName = ["REMOVE"]
-      })
-    }
-  }
+  # TODO: re-enable
+  # filter_criteria {
+  #   filter {
+  #     pattern = jsonencode({
+  #       eventName = ["REMOVE"]
+  #     })
+  #   }
+  # }
 }

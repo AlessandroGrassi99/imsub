@@ -1,21 +1,21 @@
 resource "terraform_data" "builder_lambda_webhook" {
   provisioner "local-exec" {
-    working_dir = "${path.module}/webhook/"
+    working_dir = "${path.module}/lambda_webhook/"
     command = "npm run build"
   }
 
   triggers_replace = {
-    index    = filebase64sha256("${path.module}/webhook/index.ts"),
-    package  = filebase64sha256("${path.module}/webhook/package.json"),
-    lock     = filebase64sha256("${path.module}/webhook/package-lock.json"),
-    tscongig = filebase64sha256("${path.module}/webhook/tsconfig.json"),
+    index    = filebase64sha256("${path.module}/lambda_webhook/index.ts"),
+    package  = filebase64sha256("${path.module}/lambda_webhook/package.json"),
+    lock     = filebase64sha256("${path.module}/lambda_webhook/package-lock.json"),
+    tscongig = filebase64sha256("${path.module}/lambda_webhook/tsconfig.json"),
   }
 }
 
 data "archive_file" "archiver_lambda_webhook" {
   type        = "zip"
-  source_dir  = "${path.module}/webhook/dist/"
-  output_path = "${path.module}/webhook/dist/dist.zip"
+  source_dir  = "${path.module}/lambda_webhook/dist/"
+  output_path = "${path.module}/lambda_webhook/dist/dist.zip"
   excludes    = ["dist.zip"]
 
   depends_on = [
@@ -42,7 +42,7 @@ resource "aws_lambda_function" "webhook" {
       TWITCH_REDIRECT_URL     = "https://${local.twitch_redirect_url}"
       TELEGRAM_WEBHOOK_SECRET = random_password.telegram_webhook_secret.result
       DYNAMODB_TABLE_STATES   = data.aws_dynamodb_table.auth_states.name
-      STATE_TTL_SECONDS       = 600
+      STATE_TTL_SECONDS       = 7200 # 2 Days
     }
   }
 

@@ -1,21 +1,21 @@
 resource "terraform_data" "builder_lambda_twitch_callback" {
   provisioner "local-exec" {
-    working_dir = "${path.module}/callback/"
+    working_dir = "${path.module}/lambda_callback/"
     command = "npm run build"
   }
 
   triggers_replace = {
-    index    = filebase64sha256("${path.module}/callback/index.ts"),
-    package  = filebase64sha256("${path.module}/callback/package.json"),
-    lock     = filebase64sha256("${path.module}/callback/package-lock.json"),
-    tscongig = filebase64sha256("${path.module}/callback/tsconfig.json"),
+    index    = filebase64sha256("${path.module}/lambda_callback/index.ts"),
+    package  = filebase64sha256("${path.module}/lambda_callback/package.json"),
+    lock     = filebase64sha256("${path.module}/lambda_callback/package-lock.json"),
+    tscongig = filebase64sha256("${path.module}/lambda_callback/tsconfig.json"),
   }
 }
 
 data "archive_file" "archiver_lambda_twitch_callback" {
   type        = "zip"
-  source_dir  = "${path.module}/callback/dist/"
-  output_path = "${path.module}/callback/dist/dist.zip"
+  source_dir  = "${path.module}/lambda_callback/dist/"
+  output_path = "${path.module}/lambda_callback/dist/dist.zip"
   excludes    = ["dist.zip"]
 
   depends_on = [

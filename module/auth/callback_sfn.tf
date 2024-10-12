@@ -3,7 +3,6 @@ resource "aws_sfn_state_machine" "twitch_callback" {
   role_arn = aws_iam_role.step_functions_role.arn
 
   definition = templatefile("${path.module}/callback.sfn.json", {
-    dynamodb_table_auth_states_arn = data.aws_dynamodb_table.auth_states.arn,
     dynamodb_table_auth_states_name = data.aws_dynamodb_table.auth_states.name,
     lambda_twitch_callback_arn = aws_lambda_function.twitch_callback.arn
   })

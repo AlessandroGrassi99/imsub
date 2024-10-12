@@ -5,8 +5,8 @@ resource "aws_pipes_pipe" "twitch_callback_pipe" {
   source     =  aws_sqs_queue.twitch_callback.arn
   source_parameters {
     sqs_queue_parameters {
-      batch_size                         = 1
-      maximum_batching_window_in_seconds = 1
+      batch_size                         = 10
+      maximum_batching_window_in_seconds = 0
     }
   }
 
