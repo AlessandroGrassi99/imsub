@@ -156,7 +156,7 @@ async function saveUserData(
       ':twitch_id': { S: twitch_id },
     },
     ProjectionExpression: 'user_id',
-    Limit: 1
+    Limit: 1,
   });
 
   const oldUserResult = await docClient.send(getOldUserCommand);
@@ -171,30 +171,30 @@ async function saveUserData(
         Update: {
           TableName: DYNAMODB_TABLE_USERS,
           Key: { user_id: oldUserId },
-          UpdateExpression: 'REMOVE twitch_id, twitch_user, twitch_auth',
+          UpdateExpression: 'REMOVE twitch_id, twitch',
           ConditionExpression: 'attribute_exists(user_id)',
         },
       });
     }
   }
 
-  // Update the new user's record with the new twitch_id, twitch_user, and twitch_auth.
+  // Update the new user's record with the new twitch_id and twitch map.
   transactItems.push({
     Update: {
       TableName: DYNAMODB_TABLE_USERS,
       Key: { user_id },
-      UpdateExpression:
-        'SET twitch_id = :twitch_id, twitch_user = :twitch_user, twitch_auth = :twitch_auth',
+      UpdateExpression: 'SET twitch_id = :twitch_id, twitch = :twitch',
       ExpressionAttributeValues: {
         ':twitch_id': twitch_id,
-        ':twitch_user': twitch_user,
-        ':twitch_auth': {
-          access_token,
-          refresh_token,
-          ttl,
+        ':twitch': {
+          user: twitch_user,
+          auth: {
+            access_token,
+            refresh_token,
+            ttl,
+          },
         },
       },
-      // ConditionExpression: 'attribute_exists(user_id)',
     },
   });
 
@@ -204,6 +204,7 @@ async function saveUserData(
 
   await docClient.send(transactWriteCommand);
 }
+
 
 function isStateExpired(stateTtl: number, graceSeconds: number = 3): boolean {
   const currentUnixTimeMs = Date.now();
