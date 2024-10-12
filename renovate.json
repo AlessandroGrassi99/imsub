@@ -1,0 +1,14 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+      "config:recommended",
+      ":enableVulnerabilityAlertsWithLabel('security')",
+      ":semanticCommits"
+    ],
+    "timezone": "Europe/Rome",
+    "schedule": ["at any time"],
+    "labels": [
+      "dependencies",
+      "bot"
+    ]
+  }
