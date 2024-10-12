@@ -1,19 +1,25 @@
-resource "terraform_data" "build_lambda_twitch_callback" {
+resource "terraform_data" "builder_lambda_twitch_callback" {
   provisioner "local-exec" {
-    command = <<EOT
-      cd ${path.module}/callback/;
-      echo 'Cleaning ${local.resource_name_prefix}-lambda-twitch-callback'
-      npm run clean
-      echo 'Building ${local.resource_name_prefix}-lambda-twitch-callback'
-      npm run build
-      echo 'Built ${local.resource_name_prefix}-lambda-twitch-callback'
-    EOT
+    working_dir = "${path.module}/callback/"
+    command = "npm run build"
   }
 
-  triggers_replace = [
-    filemd5("${path.module}/callback/index.ts"),
-    filemd5("${path.module}/callback/package.json"),
-    filemd5("${path.module}/callback/package-lock.json"),
+  triggers_replace = {
+    index    = filebase64sha256("${path.module}/callback/index.ts"),
+    package  = filebase64sha256("${path.module}/callback/package.json"),
+    lock     = filebase64sha256("${path.module}/callback/package-lock.json"),
+    tscongig = filebase64sha256("${path.module}/callback/tsconfig.json"),
+  }
+}
+
+data "archive_file" "archiver_lambda_twitch_callback" {
+  type        = "zip"
+  source_dir  = "${path.module}/callback/dist/"
+  output_path = "${path.module}/callback/dist/dist.zip"
+  excludes    = ["dist.zip"]
+
+  depends_on = [
+    terraform_data.builder_lambda_twitch_callback
   ]
 }
 
@@ -22,8 +28,8 @@ resource "aws_lambda_function" "twitch_callback" {
   handler          = "index.handler"
   runtime          = "nodejs20.x"
   role             = aws_iam_role.lambda_twitch_callback.arn
-  filename         = "${path.module}/callback/dist/index.zip"
-  source_code_hash = filebase64sha256("${path.module}/callback/dist/index.zip")
+  filename         = data.archive_file.archiver_lambda_twitch_callback.output_path
+  source_code_hash = data.archive_file.archiver_lambda_twitch_callback.output_base64sha256
 
   environment {
     variables = {
@@ -33,6 +39,11 @@ resource "aws_lambda_function" "twitch_callback" {
       DYNAMODB_TABLE_USERS  = data.aws_dynamodb_table.users.name
     }
   }
+
+  depends_on = [
+    terraform_data.builder_lambda_twitch_callback,
+    data.archive_file.archiver_lambda_twitch_callback
+  ]
 }
 
 data "aws_iam_policy_document" "lambda_assume_role_policy" {

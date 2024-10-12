@@ -1,16 +1,25 @@
-resource "terraform_data" "build_lambda_webhook" {
+resource "terraform_data" "builder_lambda_webhook" {
   provisioner "local-exec" {
-    command = <<EOT
-      echo 'Cleaning ${local.resource_name_prefix}-lambda-webhook'
-      rm -rf ${path.module}/webhook/dist/*
-      echo 'Building ${local.resource_name_prefix}-lambda-webhook'
-      cd ${path.module}/webhook/; npm run build
-      echo 'Built ${local.resource_name_prefix}-lambda-webhook'
-    EOT
+    working_dir = "${path.module}/webhook/"
+    command = "npm run build"
   }
 
-  triggers_replace = [
-    filemd5("${path.module}/webhook/index.ts"),
+  triggers_replace = {
+    index    = filebase64sha256("${path.module}/webhook/index.ts"),
+    package  = filebase64sha256("${path.module}/webhook/package.json"),
+    lock     = filebase64sha256("${path.module}/webhook/package-lock.json"),
+    tscongig = filebase64sha256("${path.module}/webhook/tsconfig.json"),
+  }
+}
+
+data "archive_file" "archiver_lambda_webhook" {
+  type        = "zip"
+  source_dir  = "${path.module}/webhook/dist/"
+  output_path = "${path.module}/webhook/dist/dist.zip"
+  excludes    = ["dist.zip"]
+
+  depends_on = [
+    terraform_data.builder_lambda_webhook
   ]
 }
 
@@ -22,8 +31,8 @@ resource "aws_lambda_function" "webhook" {
   publish = true
   role = aws_iam_role.lambda_webhook.arn
 
-  filename         = "${path.module}/webhook/dist/index.zip"
-  source_code_hash = filebase64sha256("${path.module}/webhook/dist/index.zip")
+  filename         = data.archive_file.archiver_lambda_webhook.output_path
+  source_code_hash = data.archive_file.archiver_lambda_webhook.output_base64sha256
   timeout          = 120
   
   environment {
@@ -37,16 +46,11 @@ resource "aws_lambda_function" "webhook" {
     }
   }
 
-  depends_on = [terraform_data.build_lambda_webhook]
+  depends_on = [
+    terraform_data.builder_lambda_webhook,
+    data.archive_file.archiver_lambda_webhook
+  ]
 }
-
-# resource "aws_lambda_provisioned_concurrency_config" "webhook" {
-#   function_name                     = aws_lambda_function.webhook.function_name
-#   provisioned_concurrent_executions = 1
-#   qualifier                         = aws_lambda_function.webhook.version
-
-#   depends_on = [ aws_lambda_function.webhook ]
-# }
 
 data "aws_iam_policy_document" "lambda_assume_role_policy" {
   statement {

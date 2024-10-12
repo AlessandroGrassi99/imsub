@@ -1,17 +1,25 @@
-resource "terraform_data" "build_lambda_state_deleted" {
+resource "terraform_data" "builder_lambda_state_deleted" {
   provisioner "local-exec" {
-    command = <<EOT
-      cd ${path.module}/state_deleted/;
-      echo 'Cleaning ${local.resource_name_prefix}-lambda-state-deleted'
-      npm run clean
-      echo 'Building ${local.resource_name_prefix}-lambda-state-deleted'
-      npm run build
-      echo 'Built ${local.resource_name_prefix}-lambda-state-deleted'
-    EOT
+    working_dir = "${path.module}/state_deleted/"
+    command = "npm run build"
   }
 
-  triggers_replace = [
-    filemd5("${path.module}/state_deleted/index.ts"),
+  triggers_replace = {
+    index    = filebase64sha256("${path.module}/state_deleted/index.ts"),
+    package  = filebase64sha256("${path.module}/state_deleted/package.json"),
+    lock     = filebase64sha256("${path.module}/state_deleted/package-lock.json"),
+    tscongig = filebase64sha256("${path.module}/state_deleted/tsconfig.json"),
+  }
+}
+
+data "archive_file" "archiver_lambda_state_deleted" {
+  type        = "zip"
+  source_dir  = "${path.module}/state_deleted/dist/"
+  output_path = "${path.module}/state_deleted/dist/dist.zip"
+  excludes    = ["dist.zip"]
+
+  depends_on = [
+    terraform_data.builder_lambda_state_deleted
   ]
 }
 
@@ -22,8 +30,8 @@ resource "aws_lambda_function" "state_deleted" {
   publish = true
   role = aws_iam_role.lambda_state_deleted.arn
 
-  filename         = "${path.module}/state_deleted/dist/index.zip"
-  source_code_hash = filebase64sha256("${path.module}/state_deleted/dist/index.zip")
+  filename         = data.archive_file.archiver_lambda_state_deleted.output_path
+  source_code_hash = data.archive_file.archiver_lambda_state_deleted.output_base64sha256
   timeout          = 5
   
   environment {
@@ -32,16 +40,11 @@ resource "aws_lambda_function" "state_deleted" {
     }
   }
 
-  depends_on = [terraform_data.build_lambda_state_deleted]
+  depends_on = [
+    terraform_data.builder_lambda_state_deleted,
+    data.archive_file.archiver_lambda_state_deleted
+  ]
 }
-
-# resource "aws_lambda_provisioned_concurrency_config" "webhook" {
-#   function_name                     = aws_lambda_function.webhook.function_name
-#   provisioned_concurrent_executions = 1
-#   qualifier                         = aws_lambda_function.webhook.version
-
-#   depends_on = [ aws_lambda_function.webhook ]
-# }
 
 resource "aws_iam_role" "lambda_state_deleted" {
   name               = "${local.resource_name_prefix}-lambda-state-deleted-role"

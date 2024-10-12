@@ -8,10 +8,8 @@
         "uuid": "^10.0.0"
     },
     "scripts": {
-        "clean": "rm -rf dist",
         "prebuild": "rm -rf dist",
-        "build": "esbuild index.ts --bundle --platform=node --target=es2020 --outfile=dist/index.js",
-        "postbuild": "cd dist && zip -r index.zip index.js*"
+        "build": "esbuild index.ts --bundle --platform=node --target=es2020 --outfile=dist/index.js"
     },
     "devDependencies": {
         "@types/node": "^22.7.5",
