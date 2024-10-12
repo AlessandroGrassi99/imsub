@@ -5,10 +5,6 @@ terraform {
     null   = { source = "hashicorp/null", version = "3.2.3" }
     random = { source = "hashicorp/random", version = "3.6.3" }
   }
-
-  backend "s3" {
-    region = "eu-west-1"
-  }
 }
 
 locals {
