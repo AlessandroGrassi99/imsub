@@ -10,6 +10,7 @@ interface DynamoDBAttribute<T> {
 
 interface StateItem {
   user_id: DynamoDBAttribute<string>;
+  message_id: DynamoDBAttribute<string>;
   state: DynamoDBAttribute<string>;
   ttl: DynamoDBAttribute<number>;
 }

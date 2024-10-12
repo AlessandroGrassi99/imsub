@@ -14,9 +14,11 @@
         "postbuild": "cd dist && zip -r index.zip index.js*"
     },
     "devDependencies": {
+        "@types/aws-lambda": "^8.10.145",
         "@types/node": "^22.7.5",
         "@types/node-fetch": "^2.6.11",
         "@types/uuid": "^10.0.0",
+        "aws-lambda": "^1.0.7",
         "esbuild": "^0.24.0"
     }
 }

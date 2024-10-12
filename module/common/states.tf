@@ -14,6 +14,10 @@ resource "aws_dynamodb_table" "states" {
   }
 
   deletion_protection_enabled = false # TODO: to change in the future
+  
+  # Necessary for EventBridge
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES" 
 }
 
 output "dynamodb_table_auth_states" {
