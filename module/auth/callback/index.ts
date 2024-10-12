@@ -1,52 +1,61 @@
-import { SQSEvent, SQSHandler } from 'aws-lambda';
+import { Callback, Context, Handler } from 'aws-lambda';
 import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
-import {
-  DynamoDBDocumentClient,
-  GetCommand,
-  DeleteCommand,
-  PutCommand,
-  TransactWriteCommand
-} from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import axios from 'axios';
+
+interface DynamoDBAttribute<T> {
+  S?: string;
+  N?: string;
+}
+
+interface StateItem {
+  user_id: DynamoDBAttribute<string>;
+  state: DynamoDBAttribute<string>;
+  ttl: DynamoDBAttribute<number>;
+}
+
+interface Params {
+  code: string;
+  scope: string;
+  state: string;
+}
+
+interface InputEvent {
+  state_item: StateItem;
+  params: Params;
+}
+
+interface OutputPayload {
+  success: boolean;
+}
 
 const AWS_REGION = process.env.AWS_REGION!;
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID!;
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET!;
 const TWITCH_REDIRECT_URL = process.env.TWITCH_REDIRECT_URL!;
-const DYNAMODB_TABLE_STATES = process.env.DYNAMODB_TABLE_STATES!;
 const DYNAMODB_TABLE_USERS = process.env.DYNAMODB_TABLE_USERS!;
 
 const ddbClient = new DynamoDBClient({ region: AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-export const handler: SQSHandler = async (event: SQSEvent): Promise<void> => {
+export const handler: Handler<InputEvent, OutputPayload> = async (
+  event: InputEvent,
+  context: Context,
+  callback: Callback<OutputPayload>
+): Promise<OutputPayload> => {
   try {
     console.log('Event', event);
-    const body = JSON.parse(event.Records[0].body);
-    console.log(body);
-    const queryParams = body.params.querystring;
-    if (!queryParams) {
-      throw new Error('Missing query parameters.');
-    }
-    console.log('Query parameters:', queryParams);
-
-    const { code, state } = await parseAndValidateQueryParams(queryParams);
-    console.log('Parameters parsed and validated');
+    console.log('Context', context);
+    console.log('callback', event);
     
-    const user_id = await validateState(state);
-    console.log('State validated');
-    
-    await deleteState(state);
-    console.log('State deleted');
-    
-    const tokens = await exchangeCodeForTokens(code);
+    const tokens = await exchangeCodeForTokens(event.params.code);
     console.log('Code exchanged');
     
     const twitchUserInfo = await fetchTwitchUserInfo(tokens.access_token);
     console.log('User info retrieved');
     
     await saveUserData(
-      user_id,
+      event.state_item.user_id.S!,
       twitchUserInfo.id,
       tokens.access_token,
       tokens.refresh_token,
@@ -56,48 +65,16 @@ export const handler: SQSHandler = async (event: SQSEvent): Promise<void> => {
     console.log('User data saved');
 
     console.log('Authorization successful');
+    return {
+      success: true,
+    };
   } catch (err) {
-    console.error('Error during OAuth callback handling:', err);
+    console.error('Error:', err);
+    return {
+      success: false,
+    };
   }
 };
-
-async function parseAndValidateQueryParams(queryParams: {
-  [name: string]: string | undefined;
-}) {
-  const { code, state, error, error_description } = queryParams;
-
-  if (error) {
-    throw new Error(`Twitch authorization error: ${error_description}`);
-  }
-
-  if (!code || !state) {
-    throw new Error('Missing code or state parameter.');
-  }
-
-  return { code, state };
-}
-
-async function validateState(state: string) {
-  const getStateCommand = new GetCommand({
-    TableName: DYNAMODB_TABLE_STATES,
-    Key: { state },
-  });
-  const { Item } = await docClient.send(getStateCommand);
-
-  if (!Item || !Item.user_id) {
-    throw new Error('Invalid or expired state parameter.');
-  }
-
-  return Item.user_id;
-}
-
-async function deleteState(state: string) {
-  const deleteStateCommand = new DeleteCommand({
-    TableName: DYNAMODB_TABLE_STATES,
-    Key: { state },
-  });
-  await docClient.send(deleteStateCommand);
-}
 
 async function exchangeCodeForTokens(code: string) {
   const tokenURL = 'https://id.twitch.tv/oauth2/token';
@@ -215,18 +192,4 @@ async function saveUserData(
   });
 
   await docClient.send(transactWriteCommand);
-}
-
-function badRequest(message: string) {
-  return {
-    statusCode: 400,
-    body: JSON.stringify({ message }),
-  };
-}
-
-function serverError(message: string) {
-  return {
-    statusCode: 500,
-    body: JSON.stringify({ message }),
-  };
 }

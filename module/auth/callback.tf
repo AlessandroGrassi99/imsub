@@ -30,7 +30,6 @@ resource "aws_lambda_function" "twitch_callback" {
       TWITCH_CLIENT_ID      = local.twitch_client_id
       TWITCH_CLIENT_SECRET  = local.twitch_client_secret
       TWITCH_REDIRECT_URL   = "https://${local.domain_api_name}/auth/callback"
-      DYNAMODB_TABLE_STATES = data.aws_dynamodb_table.auth_states.name
       DYNAMODB_TABLE_USERS  = data.aws_dynamodb_table.users.name
     }
   }
@@ -53,12 +52,6 @@ resource "aws_iam_role" "lambda_twitch_callback" {
 }
 
 data "aws_iam_policy_document" "lambda_twitch_callback" {
-  statement {
-    actions   = ["dynamodb:GetItem", "dynamodb:DeleteItem"]
-    resources = [data.aws_dynamodb_table.auth_states.arn]
-    effect    = "Allow"
-  }
-
   statement {
     actions = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query"]
     resources = [

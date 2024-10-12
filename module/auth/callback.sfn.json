@@ -1,0 +1,116 @@
+{
+  "Comment": "State machine to process Twitch authentication callback",
+  "StartAt": "ProcessMessages",
+  "States": {
+    "ProcessMessages": {
+      "Type": "Map",
+      "MaxConcurrency": 10,
+      "Iterator": {
+        "StartAt": "ParseMessageBody",
+        "States": {
+          "ParseMessageBody": {
+            "Type": "Pass",
+            "Parameters": {
+              "params.$": "States.StringToJson($.body)"
+            },
+            "Next": "GetState"
+          },
+          "GetState": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:getItem",
+            "Parameters": {
+              "TableName": "${dynamodb_table_auth_states_name}",
+              "Key": {
+                "state": {
+                  "S.$": "$.params.state"
+                }
+              }
+            },
+            "Next": "Clean Data",
+            "ResultPath": "$.state_item"
+          },
+          "Clean Data": {
+            "Type": "Pass",
+            "Next": "State Exist ?",
+            "Parameters": {
+              "params.$": "$.params",
+              "state_item.$": "$.state_item.Item"
+            }
+          },
+          "State Exist ?": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.state_item",
+                "IsPresent": false,
+                "Next": "Fail"
+              }
+            ],
+            "Default": "Delete State"
+          },
+          "Delete State": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:deleteItem",
+            "Parameters": {
+              "TableName": "${dynamodb_table_auth_states_name}",
+              "Key": {
+                "state": {
+                  "S.$": "$.params.state"
+                }
+              }
+            },
+            "ResultPath": null,
+            "Next": "Parallel"
+          },
+          "Fail": {
+            "Type": "Fail"
+          },
+          "Parallel": {
+            "Type": "Parallel",
+            "Branches": [
+              {
+                "StartAt": "Pass",
+                "States": {
+                  "Pass": {
+                    "Type": "Pass",
+                    "End": true
+                  }
+                }
+              },
+              {
+                "StartAt": "Twitch Callback",
+                "States": {
+                  "Twitch Callback": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "OutputPath": "$.Payload",
+                    "Parameters": {
+                      "Payload.$": "$",
+                      "FunctionName": "${lambda_twitch_callback_arn}"
+                    },
+                    "Retry": [
+                      {
+                        "ErrorEquals": [
+                          "Lambda.ServiceException",
+                          "Lambda.AWSLambdaException",
+                          "Lambda.SdkClientException",
+                          "Lambda.TooManyRequestsException"
+                        ],
+                        "IntervalSeconds": 1,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2
+                      }
+                    ],
+                    "End": true
+                  }
+                }
+              }
+            ],
+            "End": true
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}

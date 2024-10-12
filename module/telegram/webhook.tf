@@ -19,12 +19,13 @@ resource "aws_lambda_function" "webhook" {
 
   handler = "index.handler"
   runtime = "nodejs20.x"
-
+  publish = true
   role = aws_iam_role.lambda_webhook.arn
 
   filename         = "${path.module}/webhook/dist/index.zip"
   source_code_hash = filemd5("${path.module}/webhook/dist/index.zip")
   timeout          = 120
+  
   environment {
     variables = {
       TELEGRAM_BOT_TOKEN      = local.telegram_bot_token
@@ -37,6 +38,14 @@ resource "aws_lambda_function" "webhook" {
 
   depends_on = [terraform_data.build_lambda_webhook]
 }
+
+# resource "aws_lambda_provisioned_concurrency_config" "webhook" {
+#   function_name                     = aws_lambda_function.webhook.function_name
+#   provisioned_concurrent_executions = 1
+#   qualifier                         = aws_lambda_function.webhook.version
+
+#   depends_on = [ aws_lambda_function.webhook ]
+# }
 
 data "aws_iam_policy_document" "lambda_assume_role_policy" {
   statement {
