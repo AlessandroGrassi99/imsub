@@ -41,14 +41,15 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 
 export const handler: Handler<InputEvent, OutputPayload> = async (
   event: InputEvent,
-  context: Context,
-  callback: Callback<OutputPayload>
+  context: Context
 ): Promise<OutputPayload> => {
   try {
     console.log('Event', event);
     console.log('Context', context);
-    console.log('callback', event);
-    
+
+    checkState(event.state_item);
+    console.log('State checked');
+
     const tokens = await exchangeCodeForTokens(event.params.code);
     console.log('Code exchanged');
     
@@ -65,17 +66,26 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
     );
     console.log('User data saved');
 
-    console.log('Authorization successful');
-    return {
-      success: true,
-    };
+    console.log('Authorization success');
+    return { success: true };
   } catch (err) {
     console.error('Error:', err);
-    return {
-      success: false,
-    };
+    return { success: false };
   }
 };
+
+function checkState(state: StateItem) {
+  let stateTtl: number = parseInt(state.ttl.S!);
+  if (isNaN(stateTtl)) {
+    console.error('Invalid state TTL:', state.ttl.S);
+    throw new Error('Invalid state TTL');
+  }
+
+  if (isStateExpired(stateTtl)) {
+    console.error('Expired state TTL:', stateTtl);
+    throw new Error('Expired state TTL');
+  }
+}
 
 async function exchangeCodeForTokens(code: string) {
   const tokenURL = 'https://id.twitch.tv/oauth2/token';
@@ -193,4 +203,9 @@ async function saveUserData(
   });
 
   await docClient.send(transactWriteCommand);
+}
+
+function isStateExpired(stateTtl: number, graceSeconds: number = 3): boolean {
+  const currentUnixTimeMs = Date.now();
+  return stateTtl < (currentUnixTimeMs - graceSeconds * 1000);
 }
