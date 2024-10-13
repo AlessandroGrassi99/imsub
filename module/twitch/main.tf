@@ -1,7 +1,7 @@
 terraform {
   required_version = ">= 1.9"
   required_providers {
-    aws    = { source = "hashicorp/aws", version = "5.71.0" }
+    aws = { source = "hashicorp/aws", version = "5.71.0" }
   }
 }
 
@@ -15,6 +15,7 @@ locals {
 
   resource_name_prefix = "${local.app}-${local.environment}-${local.stack}"
 
+  domain_api_name      = var.domain_api_name
   twitch_client_id     = var.twitch_client_id
   twitch_client_secret = var.twitch_client_secret
   dynamodb_table_users = var.dynamodb_table_users

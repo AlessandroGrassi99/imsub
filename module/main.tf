@@ -102,9 +102,9 @@ module "auth" {
 module "twitch" {
   source = "./twitch"
 
-  environment                = var.environment
-  aws_profile                = var.aws_profile
-  twitch_client_id           = var.twitch_client_id
-  twitch_client_secret       = var.twitch_client_secret
-  dynamodb_table_users       = module.common.dynamodb_table_users
+  environment          = var.environment
+  aws_profile          = var.aws_profile
+  twitch_client_id     = var.twitch_client_id
+  twitch_client_secret = var.twitch_client_secret
+  dynamodb_table_users = module.common.dynamodb_table_users
 }

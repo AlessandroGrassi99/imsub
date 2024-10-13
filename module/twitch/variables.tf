@@ -14,6 +14,10 @@ variable "aws_profile" {
   type        = string
 }
 
+variable "domain_api_name" {
+  type = string
+}
+
 variable "twitch_client_id" {
   type = string
 }

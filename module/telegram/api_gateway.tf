@@ -1,5 +1,5 @@
 resource "aws_api_gateway_rest_api" "telegram" {
-  name = "${local.resource_name_prefix}-api-gateway"
+  name                         = "${local.resource_name_prefix}-api-gateway"
   disable_execute_api_endpoint = true
 
   endpoint_configuration {
@@ -84,7 +84,7 @@ data "aws_iam_policy_document" "api_gateway_telegram" {
       test     = "NotIpAddress"
       variable = "aws:SourceIp"
       # Ref: https://core.telegram.org/bots/webhooks
-      values   = [
+      values = [
         "149.154.160.0/20",
         "91.108.4.0/22"
       ]

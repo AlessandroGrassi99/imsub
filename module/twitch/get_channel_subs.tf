@@ -34,9 +34,9 @@ resource "aws_lambda_function" "channel_subs" {
 
   environment {
     variables = {
-      TWITCH_CLIENT_ID     = local.twitch_client_id
-      TWITCH_CLIENT_SECRET = local.twitch_client_secret
-      DYNAMODB_TABLE_USERS = data.aws_dynamodb_table.users.name
+      TWITCH_CLIENT_ID             = local.twitch_client_id
+      TWITCH_CLIENT_SECRET         = local.twitch_client_secret
+      # DYNAMODB_TABLE_SUBSCRIPTIONS = aws_dynamodb_table.subscriptions.name
     }
   }
 
@@ -52,14 +52,14 @@ resource "aws_iam_role" "lambda_channel_subs" {
 }
 
 data "aws_iam_policy_document" "lambda_channel_subs" {
-  statement {
-    actions = ["dynamodb:Query", "dynamodb:UpdateItem"]
-    resources = [
-      data.aws_dynamodb_table.users.arn,
-      "${data.aws_dynamodb_table.users.arn}/index/*"
-    ]
-    effect = "Allow"
-  }
+  # statement {
+  #   actions = ["dynamodb:BatchWriteItem"]
+  #   resources = [
+  #     aws_dynamodb_table.subscriptions.arn,
+  #     "${aws_dynamodb_table.subscriptions.arn}/*"
+  #   ]
+  #   effect = "Allow"
+  # }
 
   statement {
     actions = [
