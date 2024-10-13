@@ -17,7 +17,6 @@ locals {
 
   twitch_client_id     = var.twitch_client_id
   twitch_client_secret = var.twitch_client_secret
-  twitch_redirect_url  = var.twitch_redirect_url
   dynamodb_table_users = var.dynamodb_table_users
 }
 

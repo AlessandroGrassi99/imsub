@@ -22,10 +22,6 @@ variable "twitch_client_secret" {
   type = string
 }
 
-variable "twitch_redirect_url" {
-  type = string
-}
-
 variable "dynamodb_table_users" {
   type = string
 }
