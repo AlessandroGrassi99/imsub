@@ -112,7 +112,7 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
       );
 
       newAuth.expires_in = oldAuth.expires_in;
-      newAuth.access_token_ttl = Math.floor(Date.now() / 1000) + newAuth.expires_in!;
+      newAuth.access_token_ttl = (Math.floor(Date.now() / 1000) + parseInt(newAuth.expires_in!, 10)).toString();
       console.log('Refreshed Token:', newAuth);
       refreshed = true;
 
