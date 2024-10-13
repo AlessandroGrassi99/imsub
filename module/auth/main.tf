@@ -20,6 +20,7 @@ locals {
   dynamodb_table_auth_states = var.dynamodb_table_auth_states
   dynamodb_table_users       = var.dynamodb_table_users
   domain_api_name            = var.domain_api_name
+  sqs_update_user            = var.sqs_update_user
 }
 
 provider "aws" {
@@ -35,4 +36,8 @@ data "aws_dynamodb_table" "auth_states" {
 
 data "aws_dynamodb_table" "users" {
   name = local.dynamodb_table_users
+}
+
+data "aws_sqs_queue" "update_user" {
+  name = local.sqs_update_user
 }

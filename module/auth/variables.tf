@@ -37,3 +37,7 @@ variable "dynamodb_table_auth_states" {
 variable "dynamodb_table_users" {
   type = string
 }
+
+variable "sqs_update_user" {
+  type = string
+}

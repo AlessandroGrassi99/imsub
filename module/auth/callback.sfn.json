@@ -96,6 +96,15 @@
                 "Next": "Lambda Error"
               }
             ],
+            "Next": "Update The User"
+          },
+          "Update The User": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sqs:sendMessage",
+            "Parameters": {
+              "MessageBody.$": "$",
+              "QueueUrl": "${sqs_update_user_url}"
+            },
             "End": true
           },
           "Auth State Error": {

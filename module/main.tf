@@ -97,6 +97,7 @@ module "auth" {
   domain_api_name            = module.web.domain_api_name
   dynamodb_table_auth_states = module.common.dynamodb_table_auth_states
   dynamodb_table_users       = module.common.dynamodb_table_users
+  sqs_update_user            = module.telegram.sqs_update_user
 }
 
 module "twitch" {
@@ -104,6 +105,7 @@ module "twitch" {
 
   environment          = var.environment
   aws_profile          = var.aws_profile
+  domain_api_name      = module.web.domain_api_name
   twitch_client_id     = var.twitch_client_id
   twitch_client_secret = var.twitch_client_secret
   dynamodb_table_users = module.common.dynamodb_table_users

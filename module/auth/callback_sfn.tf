@@ -5,6 +5,7 @@ resource "aws_sfn_state_machine" "twitch_callback" {
   definition = templatefile("${path.module}/callback.sfn.json", {
     dynamodb_table_auth_states_name = data.aws_dynamodb_table.auth_states.name,
     lambda_twitch_callback_arn      = aws_lambda_function.twitch_callback.arn
+    sqs_update_user_url             = data.aws_sqs_queue.update_user.url
   })
 }
 
@@ -44,6 +45,16 @@ data "aws_iam_policy_document" "sfn_twitch_callback" {
   statement {
     actions   = ["lambda:InvokeFunction"]
     resources = [aws_lambda_function.twitch_callback.arn]
+    effect    = "Allow"
+  }
+
+  statement {
+    actions = [
+      "sqs:SendMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl"
+    ]
+    resources = [data.aws_sqs_queue.update_user.arn]
     effect    = "Allow"
   }
 }
