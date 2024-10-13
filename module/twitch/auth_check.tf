@@ -46,17 +46,6 @@ resource "aws_lambda_function" "auth_check" {
   ]
 }
 
-data "aws_iam_policy_document" "lambda_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    effect  = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
-    }
-  }
-}
-
 resource "aws_iam_role" "lambda_auth_check" {
   name               = "${local.resource_name_prefix}-lambda-auth-check-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
