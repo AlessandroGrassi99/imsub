@@ -1,8 +1,8 @@
 resource "aws_pipes_pipe" "twitch_callback_pipe" {
-  name        = "${local.resource_name_prefix}-pipe-twitch-callback"
-  role_arn    = aws_iam_role.eventbridge_pipe_twitch_callback.arn
-  
-  source     =  aws_sqs_queue.twitch_callback.arn
+  name     = "${local.resource_name_prefix}-pipe-twitch-callback"
+  role_arn = aws_iam_role.eventbridge_pipe_twitch_callback.arn
+
+  source = aws_sqs_queue.twitch_callback.arn
   source_parameters {
     sqs_queue_parameters {
       batch_size                         = 10
@@ -30,7 +30,7 @@ data "aws_iam_policy_document" "pipes_assume_role_policy" {
 }
 
 resource "aws_iam_role" "eventbridge_pipe_twitch_callback" {
-  name = "${local.resource_name_prefix}-eventbridge-pipe-twitch-callback-role"
+  name               = "${local.resource_name_prefix}-eventbridge-pipe-twitch-callback-role"
   assume_role_policy = data.aws_iam_policy_document.pipes_assume_role_policy.json
 }
 

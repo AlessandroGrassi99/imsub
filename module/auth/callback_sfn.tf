@@ -4,7 +4,7 @@ resource "aws_sfn_state_machine" "twitch_callback" {
 
   definition = templatefile("${path.module}/callback.sfn.json", {
     dynamodb_table_auth_states_name = data.aws_dynamodb_table.auth_states.name,
-    lambda_twitch_callback_arn = aws_lambda_function.twitch_callback.arn
+    lambda_twitch_callback_arn      = aws_lambda_function.twitch_callback.arn
   })
 }
 
@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "sfn_assume_role_policy" {
 }
 
 resource "aws_iam_role" "step_functions_role" {
-  name = "${local.resource_name_prefix}-sfn-twitch-callback-role"
+  name               = "${local.resource_name_prefix}-sfn-twitch-callback-role"
   assume_role_policy = data.aws_iam_policy_document.sfn_assume_role_policy.json
 }
 

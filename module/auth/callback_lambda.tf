@@ -1,7 +1,7 @@
 resource "terraform_data" "builder_lambda_twitch_callback" {
   provisioner "local-exec" {
     working_dir = "${path.module}/lambda_callback/"
-    command = "npm run build"
+    command     = "npm run build"
   }
 
   triggers_replace = {
@@ -33,10 +33,10 @@ resource "aws_lambda_function" "twitch_callback" {
 
   environment {
     variables = {
-      TWITCH_CLIENT_ID      = local.twitch_client_id
-      TWITCH_CLIENT_SECRET  = local.twitch_client_secret
-      TWITCH_REDIRECT_URL   = "https://${local.domain_api_name}/auth/callback"
-      DYNAMODB_TABLE_USERS  = data.aws_dynamodb_table.users.name
+      TWITCH_CLIENT_ID     = local.twitch_client_id
+      TWITCH_CLIENT_SECRET = local.twitch_client_secret
+      TWITCH_REDIRECT_URL  = "https://${local.domain_api_name}/auth/callback"
+      DYNAMODB_TABLE_USERS = data.aws_dynamodb_table.users.name
     }
   }
 

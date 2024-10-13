@@ -1,7 +1,7 @@
 resource "terraform_data" "builder_lambda_webhook" {
   provisioner "local-exec" {
     working_dir = "${path.module}/lambda_webhook/"
-    command = "npm run build"
+    command     = "npm run build"
   }
 
   triggers_replace = {
@@ -29,12 +29,12 @@ resource "aws_lambda_function" "webhook" {
   handler = "index.handler"
   runtime = "nodejs20.x"
   publish = true
-  role = aws_iam_role.lambda_webhook.arn
+  role    = aws_iam_role.lambda_webhook.arn
 
   filename         = data.archive_file.archiver_lambda_webhook.output_path
   source_code_hash = data.archive_file.archiver_lambda_webhook.output_base64sha256
   timeout          = 120
-  
+
   environment {
     variables = {
       TELEGRAM_BOT_TOKEN      = local.telegram_bot_token

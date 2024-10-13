@@ -19,6 +19,10 @@ resource "aws_dynamodb_table" "users" {
     hash_key        = "twitch_id"
     projection_type = "ALL"
   }
+
+  # Necessary for EventBridge
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
 }
 
 output "dynamodb_table_users" {

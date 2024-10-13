@@ -46,8 +46,8 @@ resource "aws_api_gateway_method_response" "twitch_callback" {
     "method.response.header.Location" = true
   }
 
-  depends_on = [ 
-    aws_api_gateway_integration.twitch_callback 
+  depends_on = [
+    aws_api_gateway_integration.twitch_callback
   ]
 }
 
@@ -67,7 +67,7 @@ resource "aws_api_gateway_integration_response" "twitch_callback" {
 
   selection_pattern = ""
 
-  depends_on = [ 
+  depends_on = [
     aws_api_gateway_integration.twitch_callback
   ]
 }
