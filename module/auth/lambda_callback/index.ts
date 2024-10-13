@@ -30,7 +30,10 @@ interface OutputPayload {
   success: boolean;
   user_id: string;
   message_id?: string;
-  error?: string;
+  error?: {
+    name: string;
+    message: string;
+  };
 }
 
 const AWS_REGION = process.env.AWS_REGION!;
@@ -55,6 +58,41 @@ interface TwitchUser {
   id: string;
   login: string;
   display_name: string;
+}
+
+class InvalidStateError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'InvalidStateError';
+  }
+}
+
+class ExpiredStateError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'ExpiredStateError';
+  }
+}
+
+class TokenExchangeError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'TokenExchangeError';
+  }
+}
+
+class UserFetchError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'UserFetchError';
+  }
+}
+
+class DynamoDBError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'DynamoDBError';
+  }
 }
 
 export const handler: Handler<InputEvent, OutputPayload> = async (
@@ -89,25 +127,39 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
     };
   } catch (err) {
     console.error('Error:', err);
+
     return { 
       success: false,
       user_id: event.state_item.user_id.S!,
       message_id: event.state_item.message_id.N,
-      error: (err as Error).name,
+      error: {
+        name: (err as Error).name,
+        message: (err as Error).message,
+      },
     };
   }
 };
 
 function checkState(state: StateItem) {
-  let stateTtl: number = parseInt(state.ttl.S!);
+  let stateTtl: number;
+
+  if (state.ttl.N) {
+    stateTtl = parseInt(state.ttl.N);
+  } else if (state.ttl.S) {
+    stateTtl = parseInt(state.ttl.S);
+  } else {
+    console.error('Missing state TTL:', state.ttl);
+    throw new InvalidStateError('Missing state TTL');
+  }
+
   if (isNaN(stateTtl)) {
-    console.error('Invalid state TTL:', state.ttl.S);
-    throw new Error('Invalid state TTL');
+    console.error('Invalid state TTL:', state.ttl);
+    throw new InvalidStateError('Invalid state TTL');
   }
 
   if (isStateExpired(stateTtl)) {
     console.error('Expired state TTL:', stateTtl);
-    throw new Error('Expired state TTL');
+    throw new ExpiredStateError('Expired state TTL');
   }
 }
 
@@ -131,7 +183,7 @@ async function exchangeCodeForTokens(code: string): Promise<TwitchAuth> {
 
     if (!data.access_token || !data.refresh_token) {
       console.error('Failed to obtain tokens:', data);
-      throw new Error('Failed to obtain tokens.');
+      throw new TokenExchangeError('Failed to obtain tokens.');
     }
 
     const twitchAuth: TwitchAuth = data;
@@ -140,7 +192,7 @@ async function exchangeCodeForTokens(code: string): Promise<TwitchAuth> {
     return twitchAuth;
   } catch (error) {
     console.error('Error exchanging code for tokens:', error);
-    throw new Error('Failed to obtain tokens.');
+    throw new TokenExchangeError('Failed to obtain tokens.');
   }
 }
 
@@ -149,20 +201,20 @@ async function fetchTwitchUser(access_token: string): Promise<TwitchUser> {
     const { data } = await axios.get('https://api.twitch.tv/helix/users', {
       headers: {
         'Client-ID': TWITCH_CLIENT_ID,
-        Authorization: `Bearer ${access_token}`,
+        'Authorization': `Bearer ${access_token}`,
       },
     });
 
     const twitchUser: TwitchUser = data.data[0];
     if (!twitchUser) {
       console.error('Failed to fetch user information.', data);
-      throw new Error('Failed to fetch user information.');
+      throw new UserFetchError('Failed to fetch user information.');
     }
 
     return twitchUser;
   } catch (error) {
     console.error('Error fetching Twitch user info:', error);
-    throw new Error('Failed to fetch user information.');
+    throw new UserFetchError('Failed to fetch user information.');
   }
 }
 
@@ -171,61 +223,62 @@ async function saveUserData(
   twitchAuth: TwitchAuth,
   twitchUser: TwitchUser,
 ) {
-  // Query the GSI to check if the twitch_id is already associated with another user_id.
-  const getOldUserCommand = new QueryCommand({
-    TableName: DYNAMODB_TABLE_USERS,
-    IndexName: 'twitch_id-index',
-    KeyConditionExpression: 'twitch_id = :twitch_id',
-    ExpressionAttributeValues: {
-      ':twitch_id': { S: twitchUser.id },
-    },
-    ProjectionExpression: 'user_id',
-    Limit: 1,
-  });
-
-  const oldUserResult = await docClient.send(getOldUserCommand);
-  const transactItems = [];
-
-  // If the twitch_id is associated with a different user, remove it from the old user.
-  if (oldUserResult.Items && oldUserResult.Items.length > 0) {
-    const oldUserId = oldUserResult.Items[0].user_id.S!;
-    if (oldUserId !== userId) {
-      transactItems.push({
-        Update: {
-          TableName: DYNAMODB_TABLE_USERS,
-          Key: { user_id: oldUserId },
-          UpdateExpression: 'REMOVE twitch_id, twitch',
-          ConditionExpression: 'attribute_exists(user_id)',
-        },
-      });
-    }
-  }
-
-  // Update the new user's record with the new twitch_id and twitch map.
-  transactItems.push({
-    Update: {
+  try {
+    const getOldUserCommand = new QueryCommand({
       TableName: DYNAMODB_TABLE_USERS,
-      Key: { user_id: userId },
-      UpdateExpression: 'SET twitch_id = :twitch_id, twitch = :twitch',
+      IndexName: 'twitch_id-index',
+      KeyConditionExpression: 'twitch_id = :twitch_id',
       ExpressionAttributeValues: {
-        ':twitch_id': twitchUser.id,
-        ':twitch': {
-          user: twitchUser,
-          auth: twitchAuth,
+        ':twitch_id': { S: twitchUser.id },
+      },
+      ProjectionExpression: 'user_id',
+      Limit: 1,
+    });
+
+    const oldUserResult = await docClient.send(getOldUserCommand);
+    const transactItems = [];
+
+    if (oldUserResult.Items && oldUserResult.Items.length > 0) {
+      const oldUserId = oldUserResult.Items[0].user_id.S!;
+      if (oldUserId !== userId) {
+        transactItems.push({
+          Update: {
+            TableName: DYNAMODB_TABLE_USERS,
+            Key: { user_id: oldUserId },
+            UpdateExpression: 'REMOVE twitch_id, twitch',
+            ConditionExpression: 'attribute_exists(user_id)',
+          },
+        });
+      }
+    }
+
+    transactItems.push({
+      Update: {
+        TableName: DYNAMODB_TABLE_USERS,
+        Key: { user_id: userId },
+        UpdateExpression: 'SET twitch_id = :twitch_id, twitch = :twitch',
+        ExpressionAttributeValues: {
+          ':twitch_id': twitchUser.id,
+          ':twitch': {
+            user: twitchUser,
+            auth: twitchAuth,
+          },
         },
       },
-    },
-  });
+    });
 
-  const transactWriteCommand = new TransactWriteCommand({
-    TransactItems: transactItems,
-  });
+    const transactWriteCommand = new TransactWriteCommand({
+      TransactItems: transactItems,
+    });
 
-  await docClient.send(transactWriteCommand);
+    await docClient.send(transactWriteCommand);
+  } catch (error) {
+    console.error('Error saving user data:', error);
+    throw new DynamoDBError('Failed to save user data.');
+  }
 }
 
-
 function isStateExpired(stateTtl: number, graceSeconds: number = 3): boolean {
-  const currentUnixTimeMs = Date.now();
-  return stateTtl < (currentUnixTimeMs - graceSeconds * 1000);
+  const currentUnixTimeSec = Math.floor(Date.now() / 1000);
+  return stateTtl < (currentUnixTimeSec - graceSeconds);
 }

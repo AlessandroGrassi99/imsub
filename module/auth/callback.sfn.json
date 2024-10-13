@@ -31,19 +31,19 @@
           },
           "Clean Data": {
             "Type": "Pass",
-            "Next": "State Exist ?",
+            "Next": "Auth State Exist ?",
             "Parameters": {
               "params.$": "$.params",
               "state_item.$": "$.state_item.Item"
             }
           },
-          "State Exist ?": {
+          "Auth State Exist ?": {
             "Type": "Choice",
             "Choices": [
               {
                 "Variable": "$.state_item",
                 "IsPresent": false,
-                "Next": "Fail"
+                "Next": "Auth State Error"
               }
             ],
             "Default": "Delete Auth State"
@@ -73,6 +73,9 @@
             "Retry": [
               {
                 "ErrorEquals": [
+                  "TokenExchangeError",
+                  "UserFetchError",
+                  "DynamoDBError",
                   "Lambda.ServiceException",
                   "Lambda.AWSLambdaException",
                   "Lambda.SdkClientException",
@@ -83,10 +86,27 @@
                 "BackoffRate": 2
               }
             ],
+            "Catch": [
+              {
+                "ErrorEquals": ["InvalidStateError", "ExpiredStateError"],
+                "Next": "Auth State Error"
+              },
+              {
+                "ErrorEquals": ["States.ALL"],
+                "Next": "Lambda Error"
+              }
+            ],
             "End": true
           },
-          "Fail": {
-            "Type": "Fail"
+          "Auth State Error": {
+            "Type": "Fail",
+            "Error": "Missing, Invalid or Expired Auth State",
+            "Cause": "The provided auth state is missing, invalid or has expired."
+          },
+          "Lambda Error": {
+            "Type": "Fail",
+            "Error": "LambdaError",
+            "Cause": "An unhandled error occurred during processing."
           }
         }
       },
