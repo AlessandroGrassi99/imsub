@@ -42,7 +42,7 @@ resource "aws_lambda_function" "webhook" {
       TWITCH_REDIRECT_URL     = "https://${local.twitch_redirect_url}"
       TELEGRAM_WEBHOOK_SECRET = random_password.telegram_webhook_secret.result
       DYNAMODB_TABLE_STATES   = data.aws_dynamodb_table.auth_states.name
-      STATE_TTL_SECONDS       = 7200 # 2 Days
+      STATE_TTL_SECONDS       = 7200 # 2 Hour
     }
   }
 

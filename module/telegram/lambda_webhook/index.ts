@@ -38,7 +38,7 @@ bot.command('start', async (ctx) => {
       state,
       user_id: ctx.from!.id.toString(),
       message_id: message.message_id,
-      ttl: Math.floor(Date.now() / 1000) + ttlSeconds!,
+      ttl: (Math.floor(Date.now() / 1000.0) + parseInt(ttlSeconds!)).toString(),
     }
   }));
   console.log('State inserted:', state);
