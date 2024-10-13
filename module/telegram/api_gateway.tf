@@ -1,137 +1,48 @@
 resource "aws_api_gateway_rest_api" "telegram" {
   name = "${local.resource_name_prefix}-api-gateway"
+  disable_execute_api_endpoint = true
 
   endpoint_configuration {
     types = ["REGIONAL"]
   }
 }
 
-resource "aws_api_gateway_resource" "telegram_webhook" {
+resource "aws_api_gateway_method_settings" "telegram" {
   rest_api_id = aws_api_gateway_rest_api.telegram.id
-  parent_id   = aws_api_gateway_rest_api.telegram.root_resource_id
-  path_part   = "webhook"
-}
+  stage_name  = aws_api_gateway_stage.telegram.stage_name
+  method_path = "*/*" # Apply settings to all methods and resources
 
-resource "aws_api_gateway_method" "telegram_webhook" {
-  rest_api_id   = aws_api_gateway_rest_api.telegram.id
-  resource_id   = aws_api_gateway_resource.telegram_webhook.id
-  http_method   = "POST"
-  authorization = "NONE"
-
-  request_parameters = {
-    "method.request.header.X-Telegram-Bot-Api-Secret-Token" = true
+  settings {
+    logging_level      = "INFO"
+    metrics_enabled    = true
+    data_trace_enabled = true
   }
-}
-
-data "aws_iam_policy_document" "api_gateway_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["apigateway.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "api_gateway_telegram_webhook" {
-  name               = "${local.resource_name_prefix}-api-gateway-telegram-webhook-role"
-  assume_role_policy = data.aws_iam_policy_document.api_gateway_assume_role_policy.json
-}
-
-data "aws_iam_policy_document" "api_gateway_telegram" {
-  statement {
-    actions   = ["lambda:InvokeFunction"]
-    resources = [aws_lambda_function.webhook.arn]
-    effect    = "Allow"
-  }
-}
-
-resource "aws_iam_role_policy" "api_gateway_webhook" {
-  name   = "${local.resource_name_prefix}-api-gateway-telegram-webhook-role-policy"
-  role   = aws_iam_role.api_gateway_telegram_webhook.id
-  policy = data.aws_iam_policy_document.api_gateway_telegram.json
-}
-
-resource "aws_api_gateway_integration" "telegram_webhook" {
-  rest_api_id             = aws_api_gateway_rest_api.telegram.id
-  resource_id             = aws_api_gateway_resource.telegram_webhook.id
-  http_method             = aws_api_gateway_method.telegram_webhook.http_method
-  integration_http_method = "POST"
-  type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.webhook.invoke_arn
-  credentials             = aws_iam_role.api_gateway_telegram_webhook.arn
-}
-
-# resource "aws_api_gateway_method" "telegram_webhook_options" {
-#   rest_api_id   = aws_api_gateway_rest_api.telegram.id
-#   resource_id   = aws_api_gateway_resource.telegram_webhook.id
-#   http_method   = "OPTIONS"
-#   authorization = "NONE"
-# }
-
-# resource "aws_api_gateway_integration" "telegram_webhook_options" {
-#   rest_api_id = aws_api_gateway_rest_api.telegram.id
-#   resource_id = aws_api_gateway_resource.telegram_webhook.id
-#   http_method = aws_api_gateway_method.telegram_webhook_options.http_method
-#   type        = "MOCK"
-
-#   request_templates = {
-#     "application/json" = "{\"statusCode\": 200}"
-#   }
-# }
-
-# resource "aws_api_gateway_method_response" "telegram_webhook_options" {
-#   rest_api_id = aws_api_gateway_rest_api.telegram.id
-#   resource_id = aws_api_gateway_resource.telegram_webhook.id
-#   http_method = aws_api_gateway_method.telegram_webhook_options.http_method
-#   status_code = "200"
-
-#   response_parameters = {
-#     "method.response.header.Access-Control-Allow-Headers" = true
-#     "method.response.header.Access-Control-Allow-Methods" = true
-#     "method.response.header.Access-Control-Allow-Origin"  = true
-#   }
-
-#   response_models = {
-#     "application/json" = "Empty"
-#   }
-# }
-
-# resource "aws_api_gateway_integration_response" "telegram_webhook_options" {
-#   rest_api_id = aws_api_gateway_rest_api.telegram.id
-#   resource_id = aws_api_gateway_resource.telegram_webhook.id
-#   http_method = aws_api_gateway_method.telegram_webhook_options.http_method
-#   status_code = aws_api_gateway_method_response.telegram_webhook_options.status_code
-
-#   response_parameters = {
-#     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Telegram-Bot-Api-Secret-Token'"
-#     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
-#     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-#   }
-
-#   response_templates = {
-#     "application/json" = ""
-#   }
-# }
-
-resource "aws_lambda_permission" "webhook" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.webhook.function_name
-  principal     = "apigateway.amazonaws.com"
-
-  source_arn = "${aws_api_gateway_rest_api.telegram.execution_arn}/*/POST/webhook"
 }
 
 resource "aws_api_gateway_deployment" "telegram" {
+  rest_api_id = aws_api_gateway_rest_api.telegram.id
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  triggers = {
+    redeployment = sha1(jsonencode([
+      filebase64sha256("${path.module}/webhook_endpoint.tf"),
+      filebase64sha256("${path.module}/api_gateway.tf"),
+    ]))
+  }
+
   depends_on = [
     aws_api_gateway_integration.telegram_webhook,
     # aws_api_gateway_integration.telegram_webhook_options
   ]
+}
 
-  rest_api_id = aws_api_gateway_rest_api.telegram.id
-  stage_name  = var.environment
+resource "aws_api_gateway_stage" "telegram" {
+  deployment_id = aws_api_gateway_deployment.telegram.id
+  rest_api_id   = aws_api_gateway_rest_api.telegram.id
+  stage_name    = var.environment
 }
 
 resource "aws_api_gateway_base_path_mapping" "telegram" {
@@ -140,7 +51,60 @@ resource "aws_api_gateway_base_path_mapping" "telegram" {
   ]
 
   api_id      = aws_api_gateway_rest_api.telegram.id
-  stage_name  = aws_api_gateway_deployment.telegram.stage_name
+  stage_name  = aws_api_gateway_stage.telegram.stage_name
   domain_name = local.domain_api_name
   base_path   = "telegram"
 }
+
+data "aws_iam_policy_document" "api_gateway_telegram" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    actions   = ["execute-api:Invoke"]
+    resources = ["${aws_api_gateway_rest_api.telegram.execution_arn}/*"]
+  }
+
+  statement {
+    effect = "Deny"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    actions   = ["execute-api:Invoke"]
+    resources = ["${aws_api_gateway_rest_api.telegram.execution_arn}/*"]
+
+    condition {
+      test     = "NotIpAddress"
+      variable = "aws:SourceIp"
+      # Ref: https://core.telegram.org/bots/webhooks
+      values   = [
+        "149.154.160.0/20",
+        "91.108.4.0/22"
+      ]
+    }
+  }
+}
+
+resource "aws_api_gateway_rest_api_policy" "api_gateway_telegram" {
+  rest_api_id = aws_api_gateway_rest_api.telegram.id
+  policy      = data.aws_iam_policy_document.api_gateway_telegram.json
+}
+
+# resource "aws_wafv2_ip_set" "allowed_ips" {
+#   name               = "AllowedIPs"
+#   description        = "IP set for allowed source IPs."
+#   scope              = "REGIONAL"
+#   ip_address_version = "IPV4"
+
+#   addresses = [
+#     "149.154.160.0/20",
+#     "91.108.4.0/22"
+#   ]
+# }
