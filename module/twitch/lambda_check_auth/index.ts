@@ -1,18 +1,18 @@
-import { Context, Handler } from 'aws-lambda';
+import { Callback, Context, Handler } from 'aws-lambda';
 import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import axios from 'axios';
 
-interface DynamoDBAttribute {
+interface DynamoDBAttribute<T> {
   S?: string;
   N?: string;
 }
 
 interface StateItem {
-  user_id: DynamoDBAttribute;
-  message_id: DynamoDBAttribute;
-  state: DynamoDBAttribute;
-  ttl: DynamoDBAttribute;
+  user_id: DynamoDBAttribute<string>;
+  message_id: DynamoDBAttribute<string>;
+  state: DynamoDBAttribute<string>;
+  ttl: DynamoDBAttribute<number>;
 }
 
 interface Params {
@@ -28,9 +28,6 @@ interface InputEvent {
 
 interface OutputPayload {
   success: boolean;
-  user_id: string;
-  message_id?: string;
-  error?: string;
 }
 
 const AWS_REGION = process.env.AWS_REGION!;
@@ -42,21 +39,6 @@ const DYNAMODB_TABLE_USERS = process.env.DYNAMODB_TABLE_USERS!;
 const ddbClient = new DynamoDBClient({ region: AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-interface TwitchAuth {
-  access_token: string;
-  access_token_ttl?: string;
-  expires_in: number;
-  refresh_token: string;
-  scope: string[];
-  token_type: string;
-}
-
-interface TwitchUser {
-  id: string;
-  login: string;
-  display_name: string;
-}
-
 export const handler: Handler<InputEvent, OutputPayload> = async (
   event: InputEvent,
   context: Context
@@ -66,35 +48,29 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
     console.log('Context', context);
 
     checkState(event.state_item);
-    console.log('State checked', event.state_item);
+    console.log('State checked');
 
-    const twitchAuth = await exchangeCodeForTokens(event.params.code);
-    console.log('Code exchanged', twitchAuth);
+    const tokens = await exchangeCodeForTokens(event.params.code);
+    console.log('Code exchanged');
     
-    const twitchUser = await fetchTwitchUser(twitchAuth.access_token);
-    console.log('User info retrieved', twitchUser);
+    const twitchUserInfo = await fetchTwitchUserInfo(tokens.access_token);
+    console.log('User info retrieved');
     
     await saveUserData(
       event.state_item.user_id.S!,
-      twitchAuth,
-      twitchUser
+      twitchUserInfo.id,
+      tokens.access_token,
+      tokens.refresh_token,
+      twitchUserInfo,
+      tokens.expires_in
     );
     console.log('User data saved');
 
     console.log('Authorization success');
-    return { 
-      success: true,
-      user_id: event.state_item.user_id.S!,
-      message_id: event.state_item.message_id.N,
-    };
+    return { success: true };
   } catch (err) {
     console.error('Error:', err);
-    return { 
-      success: false,
-      user_id: event.state_item.user_id.S!,
-      message_id: event.state_item.message_id.N,
-      error: (err as Error).name,
-    };
+    return { success: false };
   }
 };
 
@@ -111,7 +87,7 @@ function checkState(state: StateItem) {
   }
 }
 
-async function exchangeCodeForTokens(code: string): Promise<TwitchAuth> {
+async function exchangeCodeForTokens(code: string) {
   const tokenURL = 'https://id.twitch.tv/oauth2/token';
 
   const tokenParams = new URLSearchParams({
@@ -130,21 +106,17 @@ async function exchangeCodeForTokens(code: string): Promise<TwitchAuth> {
     });
 
     if (!data.access_token || !data.refresh_token) {
-      console.error('Failed to obtain tokens:', data);
       throw new Error('Failed to obtain tokens.');
     }
 
-    const twitchAuth: TwitchAuth = data;
-    twitchAuth.access_token_ttl = (Math.floor(Date.now() / 1000) + twitchAuth.expires_in).toString();
-
-    return twitchAuth;
+    return data;
   } catch (error) {
     console.error('Error exchanging code for tokens:', error);
     throw new Error('Failed to obtain tokens.');
   }
 }
 
-async function fetchTwitchUser(access_token: string): Promise<TwitchUser> {
+async function fetchTwitchUserInfo(access_token: string) {
   try {
     const { data } = await axios.get('https://api.twitch.tv/helix/users', {
       headers: {
@@ -153,13 +125,12 @@ async function fetchTwitchUser(access_token: string): Promise<TwitchUser> {
       },
     });
 
-    const twitchUser: TwitchUser = data.data[0];
-    if (!twitchUser) {
-      console.error('Failed to fetch user information.', data);
+    const userInfo = data.data[0];
+    if (!userInfo) {
       throw new Error('Failed to fetch user information.');
     }
 
-    return twitchUser;
+    return userInfo;
   } catch (error) {
     console.error('Error fetching Twitch user info:', error);
     throw new Error('Failed to fetch user information.');
@@ -167,29 +138,35 @@ async function fetchTwitchUser(access_token: string): Promise<TwitchUser> {
 }
 
 async function saveUserData(
-  userId: string,
-  twitchAuth: TwitchAuth,
-  twitchUser: TwitchUser,
+  user_id: string,
+  twitch_id: string,
+  access_token: string,
+  refresh_token: string,
+  twitch_user: any,
+  expires_in: number
 ) {
+  const ttl = Math.floor(Date.now() / 1000) + expires_in;
+
   // Query the GSI to check if the twitch_id is already associated with another user_id.
   const getOldUserCommand = new QueryCommand({
     TableName: DYNAMODB_TABLE_USERS,
     IndexName: 'twitch_id-index',
     KeyConditionExpression: 'twitch_id = :twitch_id',
     ExpressionAttributeValues: {
-      ':twitch_id': { S: twitchUser.id },
+      ':twitch_id': { S: twitch_id },
     },
     ProjectionExpression: 'user_id',
     Limit: 1,
   });
 
   const oldUserResult = await docClient.send(getOldUserCommand);
+  console.log(oldUserResult);
   const transactItems = [];
 
   // If the twitch_id is associated with a different user, remove it from the old user.
   if (oldUserResult.Items && oldUserResult.Items.length > 0) {
     const oldUserId = oldUserResult.Items[0].user_id.S!;
-    if (oldUserId !== userId) {
+    if (oldUserId !== user_id) {
       transactItems.push({
         Update: {
           TableName: DYNAMODB_TABLE_USERS,
@@ -205,13 +182,17 @@ async function saveUserData(
   transactItems.push({
     Update: {
       TableName: DYNAMODB_TABLE_USERS,
-      Key: { user_id: userId },
+      Key: { user_id },
       UpdateExpression: 'SET twitch_id = :twitch_id, twitch = :twitch',
       ExpressionAttributeValues: {
-        ':twitch_id': twitchUser.id,
+        ':twitch_id': twitch_id,
         ':twitch': {
-          user: twitchUser,
-          auth: twitchAuth,
+          user: twitch_user,
+          auth: {
+            access_token,
+            refresh_token,
+            ttl,
+          },
         },
       },
     },

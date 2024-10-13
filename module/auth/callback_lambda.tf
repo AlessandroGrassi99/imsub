@@ -30,6 +30,7 @@ resource "aws_lambda_function" "twitch_callback" {
   role             = aws_iam_role.lambda_twitch_callback.arn
   filename         = data.archive_file.archiver_lambda_twitch_callback.output_path
   source_code_hash = data.archive_file.archiver_lambda_twitch_callback.output_base64sha256
+  timeout          = 10 
 
   environment {
     variables = {
