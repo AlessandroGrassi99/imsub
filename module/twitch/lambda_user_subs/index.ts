@@ -6,7 +6,7 @@ import { Context, Handler } from 'aws-lambda';
 interface InputEvent {
   twitch_id?: string;
   access_token: string;
-  broadcaster_id: string[];
+  broadcaster_ids: string[];
   sync_with_database: boolean;
 }
 
@@ -70,7 +70,7 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
   try {
     validateInput(event);
 
-    const { twitch_id, access_token, broadcaster_id, sync_with_database } = event;
+    const { twitch_id, access_token, broadcaster_ids: broadcaster_id, sync_with_database } = event;
 
     const { subscriptions, errors } = await getSubscriptions(twitch_id!, access_token, broadcaster_id);
 
@@ -109,7 +109,7 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
  * Validates the input event.
  */
 function validateInput(event: InputEvent): void {
-  const { twitch_id, access_token, broadcaster_id } = event;
+  const { twitch_id, access_token, broadcaster_ids: broadcaster_id } = event;
   if (!twitch_id || !access_token || !broadcaster_id || broadcaster_id.length === 0) {
     throw new InputError('Invalid inputs.');
   }

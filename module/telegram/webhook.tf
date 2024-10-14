@@ -52,17 +52,6 @@ resource "aws_lambda_function" "webhook" {
   ]
 }
 
-data "aws_iam_policy_document" "lambda_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    effect  = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
-    }
-  }
-}
-
 resource "aws_iam_role" "lambda_webhook" {
   name               = "${local.resource_name_prefix}-lambda-webhook-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json

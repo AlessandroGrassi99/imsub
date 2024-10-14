@@ -83,7 +83,15 @@ module "telegram" {
   twitch_client_id           = var.twitch_client_id
   telegram_bot_token         = var.telegram_bot_token
   domain_api_name            = module.web.domain_api_name
+
+  # Tables
   dynamodb_table_auth_states = module.common.dynamodb_table_auth_states
+  dynamodb_table_users       = module.common.dynamodb_table_users
+  dynamodb_table_creators    = module.common.dynamodb_table_creators
+
+  # Lambdas
+  lambda_check_user_auth     = module.twitch.lambda_check_user_auth
+  lambda_get_user_subs       = module.twitch.lambda_get_user_subs
 }
 
 module "auth" {

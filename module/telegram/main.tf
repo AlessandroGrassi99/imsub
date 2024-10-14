@@ -21,6 +21,10 @@ locals {
   twitch_client_id           = var.twitch_client_id
   domain_api_name            = var.domain_api_name
   dynamodb_table_auth_states = var.dynamodb_table_auth_states
+  dynamodb_table_users       = var.dynamodb_table_users
+  dynamodb_table_creators    = var.dynamodb_table_creators
+  lambda_check_user_auth     = var.lambda_check_user_auth
+  lambda_get_user_subs       = var.lambda_get_user_subs
 }
 
 provider "aws" {
@@ -45,4 +49,20 @@ resource "terraform_data" "telegram_set_webhook" {
 
 data "aws_dynamodb_table" "auth_states" {
   name = local.dynamodb_table_auth_states
+}
+
+data "aws_dynamodb_table" "users" {
+  name = local.dynamodb_table_users
+}
+
+data "aws_dynamodb_table" "creators" {
+  name = local.dynamodb_table_creators
+}
+
+data "aws_lambda_function" "check_user_auth" {
+  function_name = local.lambda_check_user_auth
+}
+
+data "aws_lambda_function" "get_user_subs" {
+  function_name = local.lambda_get_user_subs
 }

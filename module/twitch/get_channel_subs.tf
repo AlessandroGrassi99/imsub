@@ -34,8 +34,8 @@ resource "aws_lambda_function" "channel_subs" {
 
   environment {
     variables = {
-      TWITCH_CLIENT_ID             = local.twitch_client_id
-      TWITCH_CLIENT_SECRET         = local.twitch_client_secret
+      TWITCH_CLIENT_ID     = local.twitch_client_id
+      TWITCH_CLIENT_SECRET = local.twitch_client_secret
       # DYNAMODB_TABLE_SUBSCRIPTIONS = aws_dynamodb_table.subscriptions.name
     }
   }

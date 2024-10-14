@@ -15,17 +15,6 @@ resource "aws_api_gateway_method" "telegram_webhook" {
   }
 }
 
-data "aws_iam_policy_document" "api_gateway_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["apigateway.amazonaws.com"]
-    }
-  }
-}
-
 resource "aws_iam_role" "api_gateway_telegram_webhook" {
   name               = "${local.resource_name_prefix}-api-gateway-telegram-webhook-role"
   assume_role_policy = data.aws_iam_policy_document.api_gateway_assume_role_policy.json

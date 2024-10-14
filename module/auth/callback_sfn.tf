@@ -1,6 +1,6 @@
 resource "aws_sfn_state_machine" "twitch_callback" {
   name     = "${local.resource_name_prefix}-sfn-twitch-callback"
-  role_arn = aws_iam_role.step_functions_role.arn
+  role_arn = aws_iam_role.twitch_callback.arn
 
   definition = templatefile("${path.module}/callback.sfn.json", {
     dynamodb_table_auth_states_name = data.aws_dynamodb_table.auth_states.name,
@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "sfn_assume_role_policy" {
   }
 }
 
-resource "aws_iam_role" "step_functions_role" {
+resource "aws_iam_role" "twitch_callback" {
   name               = "${local.resource_name_prefix}-sfn-twitch-callback-role"
   assume_role_policy = data.aws_iam_policy_document.sfn_assume_role_policy.json
 }
@@ -61,6 +61,6 @@ data "aws_iam_policy_document" "sfn_twitch_callback" {
 
 resource "aws_iam_role_policy" "sfn_twitch_callback" {
   name   = "${local.resource_name_prefix}-sfn-twitch-callback-role-policy"
-  role   = aws_iam_role.step_functions_role.id
+  role   = aws_iam_role.twitch_callback.id
   policy = data.aws_iam_policy_document.sfn_twitch_callback.json
 }

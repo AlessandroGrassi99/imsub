@@ -34,3 +34,19 @@ variable "domain_api_name" {
 variable "dynamodb_table_auth_states" {
   type = string
 }
+
+variable "dynamodb_table_users" {
+  type = string
+}
+
+variable "dynamodb_table_creators" {
+  type = string
+}
+
+variable "lambda_check_user_auth" {
+  type = string
+}
+
+variable "lambda_get_user_subs" {
+  type = string
+}
