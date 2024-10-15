@@ -30,6 +30,9 @@ interface OutputPayload {
   success: boolean;
   user_id: string;
   message_id?: string;
+  twitch_id?: string;
+  twitch_display_name?: string;
+  access_token?: string;
   error?: {
     name: string;
     message: string;
@@ -58,6 +61,9 @@ interface TwitchUser {
   id: string;
   login: string;
   display_name: string;
+  type: string;
+  broadcaster_type: string;
+  created_at: string;
 }
 
 class InvalidStateError extends Error {
@@ -124,6 +130,9 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
       success: true,
       user_id: event.state_item.user_id.S!,
       message_id: event.state_item.message_id.N,
+      twitch_id: twitchUser.id,
+      twitch_display_name: twitchUser.display_name,
+      access_token: twitchAuth.access_token,
     };
   } catch (err) {
     console.error('Error:', err);

@@ -4,6 +4,8 @@ import { Context, Handler } from 'aws-lambda';
 interface InputEvent {
   user_id: string;
   message_id: string;
+  twitch_id: string;
+  twitch_display_name: string;
   subscriptions: SubscriptionData[];
 }
 
@@ -34,32 +36,24 @@ export const handler: Handler<InputEvent, void> = async (
 ): Promise<void> => {
   console.log('Input:', input);
   
-  try {
+  try {    
+    if (input.message_id) {
+      await bot.api.deleteMessage(input.user_id, parseInt(input.message_id, 10));
+    } 
+
     let inlineKeyboard = new InlineKeyboard();
     for (const sub of input.subscriptions) {
       inlineKeyboard.url(sub.broadcaster_name, `https://twitch.tv/${sub.broadcaster_login}`);
     }
+    await bot.api.sendMessage(
+      input.user_id,
+      `You are now logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a> and are subscribed to the following channels:`,
+      { reply_markup: inlineKeyboard, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
+    );
     
-    if (input.message_id) {
-      await bot.api.editMessageReplyMarkup(input.user_id, parseInt(input.message_id), {
-        reply_markup: inlineKeyboard
-      });
-      await bot.api.editMessageText(
-        input.user_id, 
-        parseInt(input.message_id, 10), 
-        `You are subscribed to the following channels:`
-      );
-    } else {
-      await bot.api.sendMessage(
-        input.user_id,
-        `You are subscribed to the following channels:`,
-        { reply_markup: inlineKeyboard },
-      );
-    }
-  
     return;
   } catch (error) {
-    console.error('Error processing DynamoDB stream event:', error);
+    console.error('Error:', error);
     return;
   }
 };

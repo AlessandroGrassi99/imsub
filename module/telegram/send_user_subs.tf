@@ -67,7 +67,7 @@ resource "aws_iam_role_policy" "sfn_send_user_subs" {
 resource "terraform_data" "builder_lambda_send_user_subs" {
   provisioner "local-exec" {
     working_dir = "${path.module}/lambda_send_user_subs/"
-    command     = "npm run build"
+    command     = "npm install && npm run build"
   }
 
   triggers_replace = {

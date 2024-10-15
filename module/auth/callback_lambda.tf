@@ -1,7 +1,7 @@
 resource "terraform_data" "builder_lambda_twitch_callback" {
   provisioner "local-exec" {
     working_dir = "${path.module}/lambda_callback/"
-    command     = "npm run build"
+    command     = "npm install && npm run build"
   }
 
   triggers_replace = {

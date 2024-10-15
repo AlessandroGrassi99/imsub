@@ -1,7 +1,7 @@
 resource "terraform_data" "builder_lambda_auth_check" {
   provisioner "local-exec" {
     working_dir = "${path.module}/lambda_auth_check/"
-    command     = "npm run build"
+    command     = "npm install && npm run build"
   }
 
   triggers_replace = {

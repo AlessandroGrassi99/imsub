@@ -5,7 +5,7 @@
 	"features": {
 		"ghcr.io/devcontainers/features/aws-cli:1": {},
 		"ghcr.io/devcontainers/features/terraform:1": {},
-		"ghcr.io/michidk/devcontainers-features/typos:1": {},
+		// "ghcr.io/michidk/devcontainers-features/typos:1": {},
 		"ghcr.io/guiyomh/features/just:0": {},
 		"ghcr.io/jckimble/devcontainer-features/ngrok:3": {}
 	},
