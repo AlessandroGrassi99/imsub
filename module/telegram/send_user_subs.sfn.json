@@ -68,20 +68,40 @@
       ],
       "Next": "Prepare Send Telegram Subs Data",
       "InputPath": "$.get_user_subs_input",
-      "ResultPath": "$.get_user_subs_output",
-      "ResultSelector": {
-        "payload.$": "$.Payload"
-      }
+      "ResultPath": "$.get_user_subs_output"
     },
     "Prepare Send Telegram Subs Data": {
       "Type": "Pass",
       "Parameters": {
-        "send_telegram_message_input": {
-          "user_id.$": "$.input.user_id",
-          "message_id.$": "$.input.message_id",
-          "subscriptions.$": "$.get_user_subs_output.payload.subscriptions"
-        },
+        "send_user_subs_input.$": "States.JsonMerge($.input, $.get_user_subs_output.Payload, false)",
         "input.$": "$.input"
+      },
+      "Next": "Send User Subscriptions"
+    },
+    "Send User Subscriptions": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${lambda_send_user_subs_arn}",
+        "Payload.$": "$"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "InputPath": "$.send_user_subs_input",
+      "ResultPath": "$.get_user_subs_output",
+      "ResultSelector": {
+        "payload.$": "$.Payload"
       },
       "End": true
     },
