@@ -104,6 +104,7 @@ resource "aws_lambda_function" "send_user_subs" {
   environment {
     variables = {
       TELEGRAM_BOT_TOKEN = local.telegram_bot_token
+      DYNAMODB_TABLE_CREATORS = data.aws_dynamodb_table.creators.name
     }
   }
 
@@ -126,6 +127,12 @@ data "aws_iam_policy_document" "lambda_send_user_subs" {
       "logs:PutLogEvents"
     ]
     resources = ["arn:aws:logs:*:*:*"]
+    effect    = "Allow"
+  }
+
+  statement {
+    actions   = ["dynamodb:Query"]
+    resources = ["${data.aws_dynamodb_table.creators.arn}/index/twitch_id_index"]
     effect    = "Allow"
   }
 }
