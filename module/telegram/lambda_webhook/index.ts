@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard, webhookCallback } from 'grammy';
+import { Bot, GrammyError, HttpError, InlineKeyboard, webhookCallback } from 'grammy';
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import {v4 as uuidv4} from 'uuid';
@@ -49,5 +49,16 @@ bot.callbackQuery('expired-twitch-auth-url', async (ctx) => {
     text: "This link has expired. If you need to authenticate, use the /start command",
   });
 });
+
+// export const handler: Handler<APIGatewayProxyEventV2, void> = async (
+//   event: APIGatewayProxyEventV2,
+//   context: Context,
+// ): Promise<void> => { 
+
+//   console.log('Event:', event);
+//   console.log('Context:', context);
+//   await webhookCallback(bot, 'aws-lambda-async', { secretToken });
+
+// }
 
 export const handler = webhookCallback(bot, 'aws-lambda-async', { secretToken });

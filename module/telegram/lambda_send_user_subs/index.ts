@@ -2,11 +2,10 @@ import { Bot, InlineKeyboard } from 'grammy';
 import { Context, Handler } from 'aws-lambda';
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
-  DynamoDBDocumentClient,
-  QueryCommand,
-  QueryCommandInput,
+  DynamoDBDocumentClient, 
+  QueryCommand, 
+  QueryCommandInput 
 } from "@aws-sdk/lib-dynamodb";
-import { Chat } from 'grammy/types';
 
 interface InputEvent {
   user_id: string;
@@ -27,6 +26,16 @@ interface Subscription {
   gifter_name?: string;
 }
 
+interface OutputPayload {
+}
+
+class SendingMessageError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'SendingMessageError';
+  }
+}
+
 const AWS_REGION = process.env.AWS_REGION!;
 const DYNAMODB_TABLE_CREATORS = process.env.DYNAMODB_TABLE_CREATORS!;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
@@ -39,33 +48,42 @@ const ddbClient = new DynamoDBClient({ region: AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const bot = new Bot(TELEGRAM_BOT_TOKEN);
 
-export const handler: Handler<InputEvent, void> = async (
+export const handler: Handler<InputEvent, OutputPayload> = async (
   input: InputEvent,
   context: Context,
-): Promise<void> => {
+): Promise<OutputPayload> => {
   console.log('Input:', input);
-  
+  console.log('Context:', context);
+
   try {   
     if (input.message_id) {
-      await bot.api.deleteMessage(input.user_id, parseInt(input.message_id, 10));
+      const deleted = await bot.api.deleteMessage(input.user_id, parseInt(input.message_id, 10));
+      console.log('Deleted message:', deleted);
     }
+  } catch (error) {
+    console.error('Error deleting message:', error);
+  }
 
-    const [broadcasterNames1, groupIds] = await getAllGroupsByTwitchIds(input.subscriptions);
-    const [broadcasterNames2, groupChats] = await getGroupChats(broadcasterNames1, groupIds);
-    // TODO: Remove Chats where the user is already in the group
-    const inlineKeyboard = await buildInlineKeyboard(broadcasterNames2, groupChats);
+  const [broadcasterNames1, groupIds1] = await getAllGroupsByTwitchIds(input.subscriptions); 
+  console.log(`Groups by twitch_ids:`, broadcasterNames1, groupIds1);
+  const [broadcasterNames2, groupIds2] = await filterOutsiderGroups(parseInt(input.user_id, 10), broadcasterNames1, groupIds1);
+  console.log(`Groups where user is not in:`, broadcasterNames2, groupIds2);
+  const [broadcasterNames3, groupChats] = await getGroupChats(broadcasterNames2, groupIds2);
+  console.log(`Group chats:`, groupChats);
+  const inlineKeyboard = await buildInlineKeyboard(broadcasterNames3, groupChats);
 
+  try {   
     await bot.api.sendMessage(
       input.user_id,
       `You are now logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a> and subscribed to the following channels. Click the button to join the group.`,
       { reply_markup: inlineKeyboard, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
     );
-    
-    return;
+    return {};
   } catch (error) {
-    console.error('Error:', error);
-    return;
+    console.error('Error sending message:', error)
+    throw new SendingMessageError('SendingMessageError');
   }
+  return {};
 };
 
 async function getAllGroupsByTwitchIds(subscriptions: Subscription[]): Promise<[string[], string[]]> {
@@ -96,12 +114,14 @@ async function getAllGroupsByTwitchIds(subscriptions: Subscription[]): Promise<[
       const data = result.value;
       console.debug(`data: ${JSON.stringify(data)}`);
       if (data.Items) {
-        data.Items.forEach(item => {
+        data.Items.forEach((item) => {
           if (Array.isArray(item.group_ids)) {
             for(const groupId of item.group_ids) {
               broadcasterNames.push(broadcasterName);
               groupIds.push(groupId);
             }
+          } else {
+            console.error(`Invalid group_ids for ${broadcasterName}[${broadcasterId}]:`, item.group_ids);
           }
         });
       }
@@ -113,11 +133,34 @@ async function getAllGroupsByTwitchIds(subscriptions: Subscription[]): Promise<[
   return [broadcasterNames, groupIds];
 }
 
-async function getGroupChats(broadcasterNames: string[], groupIds: string[]): Promise<[string[], Chat[]]> {
+async function filterOutsiderGroups(userId: number, broadcasterNames: string[], groupIds: string[]): Promise<[string[], string[]]> {
+  const chatMemberPromises = groupIds.map((groupId) => bot.api.getChatMember(groupId, userId));
+  const chatMemberPromisesResults = await Promise.allSettled(chatMemberPromises);
+
+  chatMemberPromisesResults.forEach((result, index) => {
+    let canJoin = false;
+    if (result.status === 'fulfilled') {
+      if (result.value.status === 'left') {
+        canJoin = true;
+      }
+    } else {
+      console.error(`Error getting group chat ${broadcasterNames[index]}[${groupIds[index]}]:`, result.reason); 
+    }
+
+    if (!canJoin) {
+      broadcasterNames.splice(index, 1);
+      groupIds.splice(index, 1);
+    }
+  });
+
+  return [broadcasterNames, groupIds];
+}
+
+async function getGroupChats(broadcasterNames: string[], groupIds: string[]): Promise<[string[], any[]]> {
   const groupPromises = groupIds.map((groupId) => bot.api.getChat(groupId));
   const groupPromisesResults = await Promise.allSettled(groupPromises);
 
-  const groupChats: Chat[] = [];
+  const groupChats: any[] = [];
   groupPromisesResults.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       groupChats.push(result.value);
@@ -130,16 +173,26 @@ async function getGroupChats(broadcasterNames: string[], groupIds: string[]): Pr
   return [broadcasterNames, groupChats];
 }
 
-async function buildInlineKeyboard(broadcasterNames: string[], groupChats: Chat[]): Promise<InlineKeyboard> {
+async function buildInlineKeyboard(broadcasterNames: string[], groupChats: any[]): Promise<InlineKeyboard> {
   let inlineKeyboard = new InlineKeyboard();
-  for (const index of Array.from(groupChats, (_, i) => i)) {
-    const groupLink = await bot.api.createChatInviteLink(groupChats[index].id, {
-      creates_join_request: true,
-      expire_date: Math.floor(Date.now() / 1000) + 86400,
-    });
-    const text = `${groupChats[index].title} (${broadcasterNames[index]})`;
-    inlineKeyboard.url(text, groupLink.invite_link);
-  }
+
+  const linkPromises = groupChats.map((groupChat) => bot.api.createChatInviteLink(groupChat.id, {
+    creates_join_request: true,
+    expire_date: Math.floor(Date.now() / 1000) + 86400,
+  }));
+  
+  const linkResults = await Promise.allSettled(linkPromises);
+
+  linkResults.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      const groupLink = result.value;
+      const text = `${groupChats[index].title} (${broadcasterNames[index]})`;
+      const button = { text, url: groupLink.invite_link };
+      inlineKeyboard.row(button);
+    } else {
+      console.error(`Error creating chat invite link for ${broadcasterNames[index]}[${groupChats[index].id}]:`, result.reason);
+    }
+  });
 
   return inlineKeyboard;
 }

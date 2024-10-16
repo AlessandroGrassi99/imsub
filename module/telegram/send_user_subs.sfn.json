@@ -106,12 +106,23 @@
                 "BackoffRate": 2
               }
             ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "Next": "Lambda Error"
+              }
+            ],
             "InputPath": "$.send_user_subs_input",
             "ResultPath": "$.get_user_subs_output",
             "ResultSelector": {
               "payload.$": "$.Payload"
             },
             "End": true
+          },
+          "Lambda Error": {
+            "Type": "Fail"
           },
           "Not Implemented": {
             "Type": "Fail",

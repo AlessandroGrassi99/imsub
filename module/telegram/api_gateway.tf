@@ -30,12 +30,12 @@ resource "aws_api_gateway_deployment" "telegram" {
     redeployment = sha1(jsonencode([
       filebase64sha256("${path.module}/webhook_endpoint.tf"),
       filebase64sha256("${path.module}/api_gateway.tf"),
+      data.archive_file.archiver_lambda_webhook.output_base64sha256,
     ]))
   }
 
   depends_on = [
     aws_api_gateway_integration.telegram_webhook,
-    # aws_api_gateway_integration.telegram_webhook_options
   ]
 }
 

@@ -33,7 +33,7 @@ resource "aws_lambda_function" "webhook" {
 
   filename         = data.archive_file.archiver_lambda_webhook.output_path
   source_code_hash = data.archive_file.archiver_lambda_webhook.output_base64sha256
-  timeout          = 120
+  timeout          = 20
 
   environment {
     variables = {
@@ -48,7 +48,7 @@ resource "aws_lambda_function" "webhook" {
 
   depends_on = [
     terraform_data.builder_lambda_webhook,
-    data.archive_file.archiver_lambda_webhook
+    data.archive_file.archiver_lambda_webhook,
   ]
 }
 

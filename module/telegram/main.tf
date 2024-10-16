@@ -45,6 +45,12 @@ resource "terraform_data" "telegram_set_webhook" {
       https://api.telegram.org/bot${var.telegram_bot_token}/setWebhook
     EOT
   }
+
+  triggers_replace = {
+    secret_token = random_password.telegram_webhook_secret.result,
+    url = local.domain_api_name,
+    bot_token = var.telegram_bot_token
+  }
 }
 
 data "aws_dynamodb_table" "auth_states" {
