@@ -81,7 +81,7 @@
           "Prepare Send Telegram Subs Data": {
             "Type": "Pass",
             "Parameters": {
-              "send_user_subs_input.$": "States.JsonMerge($.input, $.get_user_subs_output.Payload, false)",
+              "send_user_invites_input.$": "States.JsonMerge($.input, $.get_user_subs_output.Payload, false)",
               "input.$": "$.input"
             },
             "Next": "Send User Subscriptions"
@@ -90,7 +90,7 @@
             "Type": "Task",
             "Resource": "arn:aws:states:::lambda:invoke",
             "Parameters": {
-              "FunctionName": "${lambda_send_user_subs_arn}",
+              "FunctionName": "${lambda_send_user_invites_arn}",
               "Payload.$": "$"
             },
             "Retry": [
@@ -114,7 +114,7 @@
                 "Next": "Lambda Error"
               }
             ],
-            "InputPath": "$.send_user_subs_input",
+            "InputPath": "$.send_user_invites_input",
             "ResultPath": "$.get_user_subs_output",
             "ResultSelector": {
               "payload.$": "$.Payload"
