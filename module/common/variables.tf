@@ -13,3 +13,13 @@ variable "aws_profile" {
   description = "AWS profile to use"
   type        = string
 }
+
+variable "upstash_email" {
+  type        = string
+  sensitive   = true
+}
+
+variable "upstash_api_key" {
+  type        = string
+  sensitive   = true
+}

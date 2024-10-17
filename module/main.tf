@@ -35,6 +35,16 @@ variable "namecheap_api_key" {
   sensitive = true
 }
 
+variable "upstash_email" {
+  type      = string
+  sensitive = true
+}
+
+variable "upstash_api_key" {
+  type      = string
+  sensitive = true
+}
+
 variable "domain" {
   type = string
 }
@@ -62,6 +72,8 @@ module "common" {
 
   environment = var.environment
   aws_profile = var.aws_profile
+  upstash_email = var.upstash_email
+  upstash_api_key = var.upstash_api_key
 }
 
 module "web" {
