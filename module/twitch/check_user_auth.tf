@@ -1,35 +1,35 @@
-resource "terraform_data" "builder_lambda_auth_check" {
+resource "terraform_data" "builder_lambda_check_user_auth" {
   provisioner "local-exec" {
-    working_dir = "${path.module}/lambda_auth_check/"
+    working_dir = "${path.module}/lambda_check_user_auth/"
     command     = "npm install && npm run build"
   }
 
   triggers_replace = {
-    index    = filebase64sha256("${path.module}/lambda_auth_check/index.ts"),
-    package  = filebase64sha256("${path.module}/lambda_auth_check/package.json"),
-    lock     = filebase64sha256("${path.module}/lambda_auth_check/package-lock.json"),
-    tscongig = filebase64sha256("${path.module}/lambda_auth_check/tsconfig.json"),
+    index    = filebase64sha256("${path.module}/lambda_check_user_auth/index.ts"),
+    package  = filebase64sha256("${path.module}/lambda_check_user_auth/package.json"),
+    lock     = filebase64sha256("${path.module}/lambda_check_user_auth/package-lock.json"),
+    tscongig = filebase64sha256("${path.module}/lambda_check_user_auth/tsconfig.json"),
   }
 }
 
-data "archive_file" "archiver_lambda_auth_check" {
+data "archive_file" "archiver_lambda_check_user_auth" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda_auth_check/dist/"
-  output_path = "${path.module}/lambda_auth_check/dist/dist.zip"
+  source_dir  = "${path.module}/lambda_check_user_auth/dist/"
+  output_path = "${path.module}/lambda_check_user_auth/dist/dist.zip"
   excludes    = ["dist.zip"]
 
   depends_on = [
-    terraform_data.builder_lambda_auth_check
+    terraform_data.builder_lambda_check_user_auth
   ]
 }
 
-resource "aws_lambda_function" "auth_check" {
-  function_name    = "${local.resource_name_prefix}-lambda-auth-check"
+resource "aws_lambda_function" "check_user_auth" {
+  function_name    = "${local.resource_name_prefix}-lambda-check-user-auth"
   handler          = "index.handler"
   runtime          = "nodejs20.x"
-  role             = aws_iam_role.lambda_auth_check.arn
-  filename         = data.archive_file.archiver_lambda_auth_check.output_path
-  source_code_hash = data.archive_file.archiver_lambda_auth_check.output_base64sha256
+  role             = aws_iam_role.lambda_check_user_auth.arn
+  filename         = data.archive_file.archiver_lambda_check_user_auth.output_path
+  source_code_hash = data.archive_file.archiver_lambda_check_user_auth.output_base64sha256
   timeout          = 10
 
   environment {
@@ -41,17 +41,17 @@ resource "aws_lambda_function" "auth_check" {
   }
 
   depends_on = [
-    terraform_data.builder_lambda_auth_check,
-    data.archive_file.archiver_lambda_auth_check,
+    terraform_data.builder_lambda_check_user_auth,
+    data.archive_file.archiver_lambda_check_user_auth,
   ]
 }
 
-resource "aws_iam_role" "lambda_auth_check" {
-  name               = "${local.resource_name_prefix}-lambda-auth-check-role"
+resource "aws_iam_role" "lambda_check_user_auth" {
+  name               = "${local.resource_name_prefix}-lambda-check-user-auth-role"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
 }
 
-data "aws_iam_policy_document" "lambda_auth_check" {
+data "aws_iam_policy_document" "lambda_check_user_auth" {
   statement {
     actions = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
     resources = [
@@ -72,8 +72,8 @@ data "aws_iam_policy_document" "lambda_auth_check" {
   }
 }
 
-resource "aws_iam_role_policy" "lambda_auth_check" {
-  name   = "${local.resource_name_prefix}-lambda-auth-check-role-policy"
-  role   = aws_iam_role.lambda_auth_check.id
-  policy = data.aws_iam_policy_document.lambda_auth_check.json
+resource "aws_iam_role_policy" "lambda_check_user_auth" {
+  name   = "${local.resource_name_prefix}-lambda-check-user-auth-role-policy"
+  role   = aws_iam_role.lambda_check_user_auth.id
+  policy = data.aws_iam_policy_document.lambda_check_user_auth.json
 }
