@@ -1,21 +1,44 @@
-import { Bot, GrammyError, HttpError, InlineKeyboard, webhookCallback } from 'grammy';
+import { Bot, InlineKeyboard, webhookCallback } from 'grammy';
+import { limit } from "@grammyjs/ratelimiter";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import {v4 as uuidv4} from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
+import { Redis } from '@upstash/redis';
 
 const {
+    AWS_LAMBDA_FUNCTION_NAME: functionName,
     TELEGRAM_BOT_TOKEN: token,
     TELEGRAM_WEBHOOK_SECRET: secretToken,
     TWITCH_REDIRECT_URL: redirectUrl,
     TWITCH_CLIENT_ID: clientId,
     DYNAMODB_TABLE_STATES: tableState,
     STATE_TTL_SECONDS: ttlSeconds,
+    UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT: redisEndpoint,
+    UPSTASH_REDIS_DATABASE_CACHE_PASSWORD: redisPassword,
 } = process.env
 
 export const bot = new Bot(token!);
 
 const dynamoClient = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(dynamoClient);
+
+const redis = new Redis({
+  url: redisEndpoint!,
+  token: redisPassword!,
+})
+
+bot.use(limit({
+  // Allow only 5 messages to be handled every hour
+  timeFrame: 3600 * 1000,
+  limit: functionName!.includes('dev') ? 5000 : 5,
+  storageClient: redis,
+  onLimitExceeded: async (ctx, _next) => {
+    await ctx.reply('Too many requests! Please try again later.');
+  },
+  keyGenerator: (ctx) => {
+    return ctx.from?.id.toString();
+  },
+}));
 
 bot.command('start', async (ctx) => {
   const state = uuidv4();
@@ -42,12 +65,6 @@ bot.command('start', async (ctx) => {
     }
   }));
   console.log('State inserted:', state);
-});
-
-bot.callbackQuery('expired-twitch-auth-url', async (ctx) => {
-  await ctx.answerCallbackQuery({
-    text: "This link has expired. If you need to authenticate, use the /start command",
-  });
 });
 
 // export const handler: Handler<APIGatewayProxyEventV2, void> = async (

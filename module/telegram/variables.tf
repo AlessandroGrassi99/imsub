@@ -50,3 +50,11 @@ variable "lambda_check_user_auth" {
 variable "lambda_get_user_subs" {
   type = string
 }
+
+variable "upstash_redis_database_cache_endpoint" {
+  type = string
+}
+
+variable "upstash_redis_database_cache_password" {
+  type = string
+}

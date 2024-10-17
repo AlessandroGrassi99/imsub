@@ -104,6 +104,10 @@ module "telegram" {
   # Lambdas
   lambda_check_user_auth     = module.twitch.lambda_check_user_auth
   lambda_get_user_subs       = module.twitch.lambda_get_user_subs
+
+  # Cache
+  upstash_redis_database_cache_endpoint = module.common.upstash_redis_database_cache_endpoint
+  upstash_redis_database_cache_password = module.common.upstash_redis_database_cache_password
 }
 
 module "auth" {
