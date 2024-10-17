@@ -74,6 +74,14 @@
                 "BackoffRate": 2
               }
             ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "Next": "Lambda Error"
+              }
+            ],
             "Next": "Prepare Send Telegram Subs Data",
             "InputPath": "$.get_user_subs_input",
             "ResultPath": "$.get_user_subs_output"

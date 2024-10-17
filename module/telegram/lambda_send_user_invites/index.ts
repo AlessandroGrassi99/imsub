@@ -78,10 +78,9 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
       `You are now logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a> and subscribed to the following channels. Click the button to join the group.`,
       { reply_markup: inlineKeyboard, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
     );
-    return {};
   } catch (error) {
     console.error('Error sending message:', error)
-    throw new SendingMessageError('SendingMessageError');
+    throw new SendingMessageError('Error sending message to user.');
   }
   return {};
 };
@@ -116,10 +115,10 @@ async function getAllGroupsByTwitchIds(subscriptions: Subscription[]): Promise<[
       if (data.Items) {
         data.Items.forEach((item) => {
           if (Array.isArray(item.group_ids)) {
-            for(const groupId of item.group_ids) {
+            item.group_ids.forEach((groupId: string) => {
               broadcasterNames.push(broadcasterName);
               groupIds.push(groupId);
-            }
+            });
           } else {
             console.error(`Invalid group_ids for ${broadcasterName}[${broadcasterId}]:`, item.group_ids);
           }
@@ -134,6 +133,9 @@ async function getAllGroupsByTwitchIds(subscriptions: Subscription[]): Promise<[
 }
 
 async function filterOutsiderGroups(userId: number, broadcasterNames: string[], groupIds: string[]): Promise<[string[], string[]]> {
+  const filteredBroadcasterNames: string[] = [];
+  const filteredGroupIds: string[] = [];
+
   const chatMemberPromises = groupIds.map((groupId) => bot.api.getChatMember(groupId, userId));
   const chatMemberPromisesResults = await Promise.allSettled(chatMemberPromises);
 
@@ -147,34 +149,36 @@ async function filterOutsiderGroups(userId: number, broadcasterNames: string[], 
       console.error(`Error getting group chat ${broadcasterNames[index]}[${groupIds[index]}]:`, result.reason); 
     }
 
-    if (!canJoin) {
-      broadcasterNames.splice(index, 1);
-      groupIds.splice(index, 1);
+    if (canJoin) {
+      filteredBroadcasterNames.push(broadcasterNames[index]);
+      filteredGroupIds.push(groupIds[index]);
     }
   });
 
-  return [broadcasterNames, groupIds];
+  return [filteredBroadcasterNames, filteredGroupIds];
 }
 
 async function getGroupChats(broadcasterNames: string[], groupIds: string[]): Promise<[string[], any[]]> {
   const groupPromises = groupIds.map((groupId) => bot.api.getChat(groupId));
   const groupPromisesResults = await Promise.allSettled(groupPromises);
 
+  const filteredBroadcasterNames: string[] = [];
   const groupChats: any[] = [];
+
   groupPromisesResults.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       groupChats.push(result.value);
+      filteredBroadcasterNames.push(broadcasterNames[index]);
     } else {
       console.error(`Error getting group chat ${broadcasterNames[index]}[${groupIds[index]}]:`, result.reason);
-      broadcasterNames.splice(index, 1);
     }
   });
 
-  return [broadcasterNames, groupChats];
+  return [filteredBroadcasterNames, groupChats];
 }
 
 async function buildInlineKeyboard(broadcasterNames: string[], groupChats: any[]): Promise<InlineKeyboard> {
-  let inlineKeyboard = new InlineKeyboard();
+  const inlineKeyboard = new InlineKeyboard();
 
   const linkPromises = groupChats.map((groupChat) => bot.api.createChatInviteLink(groupChat.id, {
     creates_join_request: true,
