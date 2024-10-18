@@ -3,5 +3,5 @@ output "webhook_endpoint" {
 }
 
 output "sqs_update_user" {
-  value = aws_sqs_queue.send_user_invites.name
+  value = aws_sqs_queue.send_user_status.name
 }

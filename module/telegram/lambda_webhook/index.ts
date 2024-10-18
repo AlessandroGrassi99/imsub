@@ -1,27 +1,20 @@
-import { Bot, InlineKeyboard, webhookCallback } from 'grammy';
+import { Bot, webhookCallback } from 'grammy';
 import { limit } from "@grammyjs/ratelimiter";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { v4 as uuidv4 } from 'uuid';
 import { Redis } from '@upstash/redis';
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
 const {
+    AWS_REGION: region,
     AWS_LAMBDA_FUNCTION_NAME: functionName,
     TELEGRAM_BOT_TOKEN: token,
     TELEGRAM_WEBHOOK_SECRET: secretToken,
-    TWITCH_REDIRECT_URL: redirectUrl,
-    TWITCH_CLIENT_ID: clientId,
-    DYNAMODB_TABLE_STATES: tableState,
-    STATE_TTL_SECONDS: ttlSeconds,
     UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT: redisEndpoint,
     UPSTASH_REDIS_DATABASE_CACHE_PASSWORD: redisPassword,
+    SQS_SEND_USER_STATUS_URL: sqsSendUserStatusUrl,
 } = process.env
 
-export const bot = new Bot(token!);
-
-const dynamoClient = new DynamoDBClient({});
-const ddbDocClient = DynamoDBDocumentClient.from(dynamoClient);
-
+const sqsClient = new SQSClient({ region });
+const bot = new Bot(token!);
 const redis = new Redis({
   url: redisEndpoint!,
   token: redisPassword!,
@@ -41,41 +34,27 @@ bot.use(limit({
 }));
 
 bot.command('start', async (ctx) => {
-  const state = uuidv4();
+  let message = await ctx.reply('⏳ Loading...');
 
-  const scopes = ['user:read:subscriptions', 'channel:read:subscriptions'].join('+');
-  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId!}&redirect_uri=${encodeURIComponent(
-    redirectUrl!
-  )}&response_type=code&scope=${scopes}&state=${state}`;
+  try {
+    const messageBody = JSON.stringify({
+      user_id: ctx.from?.id.toString(),
+      message_id: message.message_id.toString(),
+      username: ctx.from?.username,
+      timestamp: new Date().toISOString(),
+    });
 
-  const inlineKeyboard = new InlineKeyboard()
-    .url('Authenticate with Twitch', authUrl);
-  let message = await ctx.reply(`Please authenticate with Twitch`, {
-    reply_markup: inlineKeyboard,
-  });
-  console.log('Message sent:', message);
+    const sendMessageCommand = new SendMessageCommand({
+      QueueUrl: sqsSendUserStatusUrl,
+      MessageBody: messageBody,
+    });
 
-  await ddbDocClient.send(new PutCommand({
-    TableName: tableState!,
-    Item: {
-      state,
-      user_id: ctx.from!.id.toString(),
-      message_id: message.message_id,
-      ttl: Math.floor(Date.now() / 1000.0) + parseInt(ttlSeconds!),
-    }
-  }));
-  console.log('State inserted:', state);
+    const response = await sqsClient.send(sendMessageCommand);
+
+    console.log('Message sent to SQS:', response);
+  } catch (error) {
+    console.error('Error sending message to SQS:', error);
+  }
 });
-
-// export const handler: Handler<APIGatewayProxyEventV2, void> = async (
-//   event: APIGatewayProxyEventV2,
-//   context: Context,
-// ): Promise<void> => { 
-
-//   console.log('Event:', event);
-//   console.log('Context:', context);
-//   await webhookCallback(bot, 'aws-lambda-async', { secretToken });
-
-// }
 
 export const handler = webhookCallback(bot, 'aws-lambda-async', { secretToken });

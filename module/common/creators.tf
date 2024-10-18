@@ -1,7 +1,7 @@
 resource "aws_dynamodb_table" "creators" {
-  name                        = "${local.resource_name_prefix}-dynamodb-table-creators"
-  billing_mode                = "PAY_PER_REQUEST"
-  hash_key                    = "user_id"
+  name         = "${local.resource_name_prefix}-dynamodb-table-creators"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
 
   attribute {
     name = "user_id"

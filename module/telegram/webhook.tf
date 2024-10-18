@@ -37,14 +37,12 @@ resource "aws_lambda_function" "webhook" {
 
   environment {
     variables = {
-      TELEGRAM_BOT_TOKEN      = local.telegram_bot_token
-      TWITCH_CLIENT_ID        = local.twitch_client_id
-      TWITCH_REDIRECT_URL     = "https://${local.twitch_redirect_url}"
-      TELEGRAM_WEBHOOK_SECRET = random_password.telegram_webhook_secret.result
-      DYNAMODB_TABLE_STATES   = data.aws_dynamodb_table.auth_states.name
+      TELEGRAM_BOT_TOKEN                    = local.telegram_bot_token
+      TELEGRAM_WEBHOOK_SECRET               = random_password.telegram_webhook_secret.result
+      SQS_SEND_USER_STATUS_URL              = aws_sqs_queue.send_user_status.url
       UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT = var.upstash_redis_database_cache_endpoint
       UPSTASH_REDIS_DATABASE_CACHE_PASSWORD = var.upstash_redis_database_cache_password
-      STATE_TTL_SECONDS       = 7200 # 2 Hour
+      STATE_TTL_SECONDS                     = 7200 # 2 Hour
     }
   }
 
@@ -52,6 +50,12 @@ resource "aws_lambda_function" "webhook" {
     terraform_data.builder_lambda_webhook,
     data.archive_file.archiver_lambda_webhook,
   ]
+}
+
+resource "aws_lambda_provisioned_concurrency_config" "webhook" {
+  function_name                     = aws_lambda_function.webhook.function_name
+  provisioned_concurrent_executions = 1
+  qualifier                         = aws_lambda_function.webhook.version
 }
 
 resource "aws_iam_role" "lambda_webhook" {
@@ -63,6 +67,12 @@ data "aws_iam_policy_document" "lambda_webhook" {
   statement {
     actions   = ["dynamodb:PutItem"]
     resources = [data.aws_dynamodb_table.auth_states.arn]
+    effect    = "Allow"
+  }
+
+  statement {
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.send_user_status.arn]
     effect    = "Allow"
   }
 

@@ -70,9 +70,9 @@ variable "twitch_auth_redirect" {
 module "common" {
   source = "./common"
 
-  environment = var.environment
-  aws_profile = var.aws_profile
-  upstash_email = var.upstash_email
+  environment     = var.environment
+  aws_profile     = var.aws_profile
+  upstash_email   = var.upstash_email
   upstash_api_key = var.upstash_api_key
 }
 
@@ -89,12 +89,12 @@ module "web" {
 module "telegram" {
   source = "./telegram"
 
-  environment                = var.environment
-  aws_profile                = var.aws_profile
-  twitch_redirect_url        = "api.${var.domain}/auth/callback" # TODO: Get from auth
-  twitch_client_id           = var.twitch_client_id
-  telegram_bot_token         = var.telegram_bot_token
-  domain_api_name            = module.web.domain_api_name
+  environment         = var.environment
+  aws_profile         = var.aws_profile
+  twitch_redirect_url = "api.${var.domain}/auth/callback" # TODO: Get from auth
+  twitch_client_id    = var.twitch_client_id
+  telegram_bot_token  = var.telegram_bot_token
+  domain_api_name     = module.web.domain_api_name
 
   # Tables
   dynamodb_table_auth_states = module.common.dynamodb_table_auth_states
@@ -102,8 +102,8 @@ module "telegram" {
   dynamodb_table_creators    = module.common.dynamodb_table_creators
 
   # Lambdas
-  lambda_check_user_auth     = module.twitch.lambda_check_user_auth
-  lambda_get_user_subs       = module.twitch.lambda_get_user_subs
+  lambda_check_user_auth = module.twitch.lambda_check_user_auth
+  lambda_get_user_subs   = module.twitch.lambda_get_user_subs
 
   # Cache
   upstash_redis_database_cache_endpoint = module.common.upstash_redis_database_cache_endpoint

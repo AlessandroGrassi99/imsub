@@ -6,6 +6,7 @@ import {
   QueryCommand, 
   QueryCommandInput 
 } from "@aws-sdk/lib-dynamodb";
+import { Redis } from '@upstash/redis';
 
 interface InputEvent {
   user_id: string;
@@ -39,6 +40,8 @@ class SendingMessageError extends Error {
 const AWS_REGION = process.env.AWS_REGION!;
 const DYNAMODB_TABLE_CREATORS = process.env.DYNAMODB_TABLE_CREATORS!;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
+const UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT = process.env.UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT!;
+const UPSTASH_REDIS_DATABASE_CACHE_PASSWORD = process.env.UPSTASH_REDIS_DATABASE_CACHE_PASSWORD!;
 
 if (!TELEGRAM_BOT_TOKEN) {
   throw new Error('TELEGRAM_BOT_TOKEN is not defined in the environment variables.');
@@ -47,6 +50,10 @@ if (!TELEGRAM_BOT_TOKEN) {
 const ddbClient = new DynamoDBClient({ region: AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const bot = new Bot(TELEGRAM_BOT_TOKEN);
+const redis = new Redis({
+  url: UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT!,
+  token: UPSTASH_REDIS_DATABASE_CACHE_PASSWORD!,
+})
 
 export const handler: Handler<InputEvent, OutputPayload> = async (
   input: InputEvent,
@@ -75,7 +82,7 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
   try {   
     await bot.api.sendMessage(
       input.user_id,
-      `You are now logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a> and subscribed to the following channels. Click the button to join the group.`,
+      `You are logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a>. You can join the following groups:`,
       { reply_markup: inlineKeyboard, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
     );
   } catch (error) {

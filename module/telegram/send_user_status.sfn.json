@@ -1,0 +1,231 @@
+{
+  "StartAt": "Map",
+  "States": {
+    "Map": {
+      "Type": "Map",
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "Prepare Input",
+        "States": {
+          "Prepare Input": {
+            "Type": "Pass",
+            "Next": "Is twitch_id Present?",
+            "Parameters": {
+              "input.$": "States.StringToJson($.body)"
+            }
+          },
+          "Is twitch_id Present?": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.input.twitch_id",
+                "IsPresent": false,
+                "Next": "Get Twitch"
+              }
+            ],
+            "Default": "Is Check User Auth Present?"
+          },
+          "Get Twitch": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:getItem",
+            "Parameters": {
+              "TableName": "${dynamodb_table_users_name}",
+              "Key": {
+                "user_id": {
+                  "S.$": "$.input.user_id"
+                }
+              }
+            },
+            "Next": "User linked to Twitch?",
+            "ResultPath": "$.get_twitch_id_output"
+          },
+          "User linked to Twitch?": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.get_twitch_id_output.Item.twitch_id",
+                "IsPresent": false,
+                "Next": "Send User Auth Link"
+              }
+            ],
+            "Default": "Clean twitch_id_output Data"
+          },
+          "Clean twitch_id_output Data": {
+            "Type": "Pass",
+            "Next": "Check User Auth",
+            "Parameters": {
+              "input.$": "$.input",
+              "get_twitch_id_output": {
+                "twitch_id.$": "$.get_twitch_id_output.Item.twitch_id.S",
+                "twitch_display_name.$": "$.get_twitch_id_output.Item.twitch.M.user.M.display_name.S"
+              }
+            }
+          },
+          "Send User Auth Link": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "OutputPath": "$.Payload",
+            "Parameters": {
+              "Payload.$": "$",
+              "FunctionName": "${lambda_send_user_auth_link_arn}"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "InputPath": "$.input",
+            "End": true
+          },
+          "Is Check User Auth Present?": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.input.access_token",
+                "IsPresent": false,
+                "Next": "Check User Auth"
+              }
+            ],
+            "Default": "Get Twitch Creators"
+          },
+          "Check User Auth": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "Payload.$": "$",
+              "FunctionName": "${lambda_check_user_auth_arn}"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Next": "Merge Input Data",
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "Next": "Send User Auth Link"
+              }
+            ],
+            "InputPath": "$.input",
+            "ResultPath": "$.check_user_auth_output"
+          },
+          "Merge Input Data": {
+            "Type": "Pass",
+            "Next": "Get Twitch Creators",
+            "Parameters": {
+              "input.$": "States.JsonMerge(States.JsonMerge($.input, $.check_user_auth_output.Payload.new_auth, false), $.get_twitch_id_output, false)"
+            }
+          },
+          "Get Twitch Creators": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:dynamodb:scan",
+            "Parameters": {
+              "TableName": "${dynamodb_table_creators_name}",
+              "IndexName": "twitch_id_index",
+              "FilterExpression": "attribute_exists(twitch_id)",
+              "ProjectionExpression": "twitch_id"
+            },
+            "Next": "Prepare Get User Subscriptions Data",
+            "ResultSelector": {
+              "creator_ids.$": "$.Items[*].twitch_id.S"
+            },
+            "ResultPath": "$.get_twitch_creators_output"
+          },
+          "Prepare Get User Subscriptions Data": {
+            "Type": "Pass",
+            "Next": "Get User Subscriptions",
+            "Parameters": {
+              "input.$": "$.input",
+              "get_user_subs_input": {
+                "twitch_id.$": "$.input.twitch_id",
+                "access_token.$": "$.input.access_token",
+                "broadcaster_ids.$": "$.get_twitch_creators_output.creator_ids"
+              }
+            }
+          },
+          "Get User Subscriptions": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "FunctionName": "${lambda_get_user_subs_arn}",
+              "Payload.$": "$"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Next": "Prepare Send Telegram Subs Data",
+            "InputPath": "$.get_user_subs_input",
+            "ResultPath": "$.get_user_subs_output"
+          },
+          "Prepare Send Telegram Subs Data": {
+            "Type": "Pass",
+            "Parameters": {
+              "send_user_invites_input.$": "States.JsonMerge($.input, $.get_user_subs_output.Payload, false)",
+              "input.$": "$.input"
+            },
+            "Next": "Send User Subscriptions"
+          },
+          "Send User Subscriptions": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "FunctionName": "${lambda_send_user_invites_arn}",
+              "Payload.$": "$"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "InputPath": "$.send_user_invites_input",
+            "ResultPath": "$.get_user_subs_output",
+            "ResultSelector": {
+              "payload.$": "$.Payload"
+            },
+            "End": true
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}
