@@ -37,11 +37,11 @@ resource "aws_lambda_function" "send_user_auth_link" {
 
   environment {
     variables = {
-      TELEGRAM_BOT_TOKEN      = local.telegram_bot_token
-      TWITCH_CLIENT_ID        = local.twitch_client_id
-      TWITCH_REDIRECT_URL     = "https://${local.twitch_redirect_url}"
+      TELEGRAM_BOT_TOKEN         = local.telegram_bot_token
+      TWITCH_CLIENT_ID           = local.twitch_client_id
+      TWITCH_REDIRECT_URL        = "https://${local.twitch_redirect_url}"
       DYNAMODB_TABLE_AUTH_STATES = data.aws_dynamodb_table.auth_states.name
-      STATE_TTL_SECONDS       = 7200 # 2 Hour
+      STATE_TTL_SECONDS          = 7200 # 2 Hour
     }
   }
 

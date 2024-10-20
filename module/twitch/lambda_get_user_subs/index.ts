@@ -6,7 +6,8 @@ import { Handler } from 'aws-lambda';
 interface InputEvent {
   twitch_id?: string;
   access_token: string;
-  broadcaster_ids: string[];
+  broadcaster_id?: string;
+  broadcaster_ids?: string[];
 }
 
 interface SubscriptionData {
@@ -57,16 +58,17 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
   try {
     validateInput(event);
 
-    const { twitch_id, access_token, broadcaster_ids: broadcaster_id } = event;
+    const { twitch_id, access_token, broadcaster_ids, broadcaster_id } = event;
+    const broadcasterIds = broadcaster_ids || [broadcaster_id!];
 
-    const { subscriptions, errors } = await getSubscriptions(twitch_id!, access_token, broadcaster_id);
+    const { subscriptions, errors } = await getSubscriptions(twitch_id!, access_token, broadcasterIds);
 
     if (errors.length > 0) {
       console.warn('Subscription check errors:', errors);
       return {
         subscriptions,
       };
-    } else if (errors.length === event.broadcaster_ids.length) {
+    } else if (errors.length === broadcasterIds.length) {
       console.error('Subscription check errors:', errors);
       throw new TwitchAPIError('Failed to check user subscriptions.');
     }
@@ -84,8 +86,13 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
  * Validates the input event.
  */
 function validateInput(event: InputEvent): void {
-  const { twitch_id, access_token, broadcaster_ids: broadcaster_id } = event;
-  if (!twitch_id || !access_token || !broadcaster_id || broadcaster_id.length === 0) {
+  const { twitch_id, access_token, broadcaster_ids, broadcaster_id } = event;
+  const isTwitchIdMissing = !twitch_id;
+  const isAccessTokenMissing = !access_token;
+  const isBroadcasterIdsMissing =
+    !broadcaster_id && (!broadcaster_ids || broadcaster_ids.length === 0);
+
+  if (isTwitchIdMissing || isAccessTokenMissing || isBroadcasterIdsMissing) {
     throw new InputError('InvalidInputs');
   }
 };

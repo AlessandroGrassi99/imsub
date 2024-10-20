@@ -90,17 +90,6 @@ resource "aws_pipes_pipe" "send_user_status_pipe" {
   }
 }
 
-data "aws_iam_policy_document" "pipes_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    effect  = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["pipes.amazonaws.com"]
-    }
-  }
-}
-
 resource "aws_iam_role" "eventbridge_pipe_send_user_status" {
   name               = "${local.resource_name_prefix}-eventbridge-pipe-send-user-status-role"
   assume_role_policy = data.aws_iam_policy_document.pipes_assume_role_policy.json

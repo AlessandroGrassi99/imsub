@@ -40,6 +40,7 @@ resource "aws_lambda_function" "webhook" {
       TELEGRAM_BOT_TOKEN                    = local.telegram_bot_token
       TELEGRAM_WEBHOOK_SECRET               = random_password.telegram_webhook_secret.result
       SQS_SEND_USER_STATUS_URL              = aws_sqs_queue.send_user_status.url
+      SQS_CHECK_JOIN_REQUEST_URL            = aws_sqs_queue.check_join_request.url
       UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT = var.upstash_redis_database_cache_endpoint
       UPSTASH_REDIS_DATABASE_CACHE_PASSWORD = var.upstash_redis_database_cache_password
       STATE_TTL_SECONDS                     = 7200 # 2 Hour
@@ -71,9 +72,12 @@ data "aws_iam_policy_document" "lambda_webhook" {
   }
 
   statement {
-    actions   = ["sqs:SendMessage"]
-    resources = [aws_sqs_queue.send_user_status.arn]
-    effect    = "Allow"
+    actions = ["sqs:SendMessage"]
+    resources = [
+      aws_sqs_queue.send_user_status.arn,
+      aws_sqs_queue.check_join_request.arn
+    ]
+    effect = "Allow"
   }
 
   statement {

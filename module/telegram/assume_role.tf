@@ -30,3 +30,14 @@ data "aws_iam_policy_document" "lambda_assume_role_policy" {
     }
   }
 }
+
+data "aws_iam_policy_document" "pipes_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["pipes.amazonaws.com"]
+    }
+  }
+}

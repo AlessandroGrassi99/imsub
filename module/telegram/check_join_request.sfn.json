@@ -1,0 +1,198 @@
+{
+  "Comment": "A description of my state machine with DynamoDB integration",
+  "StartAt": "Map",
+  "States": {
+    "Map": {
+      "Type": "Map",
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "Prepare Input Data",
+        "States": {
+          "Prepare Input Data": {
+            "Type": "Pass",
+            "Next": "Get twitch_id",
+            "Parameters": {
+              "input.$": "States.StringToJson($.body)"
+            }
+          },
+          "Get twitch_id": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:getItem",
+            "Parameters": {
+              "TableName": "imsub-dev-common-dynamodb-table-users",
+              "Key": {
+                "user_id": {
+                  "S.$": "$.input.user_id"
+                }
+              },
+              "ProjectionExpression": "twitch_id"
+            },
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": null,
+                "Next": "Approve/Decline User"
+              }
+            ],
+            "ResultPath": "$.get_twitch_id_output",
+            "Next": "Find broadcaster_id",
+            "ResultSelector": {
+              "twitch_id.$": "$.Item.twitch_id.S"
+            }
+          },
+          "Find broadcaster_id": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:dynamodb:scan",
+            "Parameters": {
+              "TableName": "${dynamodb_table_creators_name}",
+              "FilterExpression": "contains(group_ids, :group_id)",
+              "ExpressionAttributeValues": {
+                ":group_id": {
+                  "S.$": "$.group_id"
+                }
+              },
+              "ProjectionExpression": "twitch_id"
+            },
+            "InputPath": "$.input",
+            "ResultPath": "$.get_broadcaster_id_output",
+            "ResultSelector": {
+              "broadcaster_id.$": "$.Items[0].twitch_id.S"
+            },
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": null,
+                "Next": "Approve/Decline User"
+              }
+            ],
+            "Next": "Prepare Check User Auth Data"
+          },
+          "Prepare Check User Auth Data": {
+            "Type": "Pass",
+            "Next": "Check User Auth",
+            "Parameters": {
+              "input.$": "States.JsonMerge(States.JsonMerge($.input, $.get_broadcaster_id_output, false), $.get_twitch_id_output, false)"
+            }
+          },
+          "Check User Auth": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$.input",
+            "ResultPath": "$.check_user_auth_output",
+            "Parameters": {
+              "FunctionName": "${lambda_check_user_auth_arn}",
+              "Payload.$": "$"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": null,
+                "Next": "Approve/Decline User"
+              }
+            ],
+            "Next": "Prepare Check User Subscription Data",
+            "ResultSelector": {
+              "access_token.$": "$.Payload.new_auth.access_token"
+            }
+          },
+          "Prepare Check User Subscription Data": {
+            "Type": "Pass",
+            "Next": "Check User Subscription",
+            "Parameters": {
+              "input.$": "States.JsonMerge($.input, $.check_user_auth_output, false)"
+            }
+          },
+          "Check User Subscription": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$.input",
+            "Parameters": {
+              "FunctionName": "${lambda_get_user_subs_arn}",
+              "Payload.$": "$"
+            },
+"Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": null,
+                "Next": "Approve/Decline User"
+              }
+            ],
+            "ResultSelector": {
+              "subscription.$": "$.Payload.subscriptions[0]"
+            },
+            "Next": "Prepare Approve/Decline User Data",
+            "ResultPath": "$.check_user_subscription_output"
+          },
+          "Prepare Approve/Decline User Data": {
+            "Type": "Pass",
+            "Next": "Approve/Decline User",
+            "Parameters": {
+              "input.$": "States.JsonMerge($.input, $.check_user_subscription_output, false)"
+            }
+          },
+          "Approve/Decline User": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$.input",
+            "OutputPath": "$.Payload",
+            "Parameters": {
+              "FunctionName": "${lambda_send_join_request_choice_arn}",
+              "Payload.$": "$"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "End": true
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}

@@ -6,7 +6,6 @@ import {
   QueryCommand, 
   QueryCommandInput 
 } from "@aws-sdk/lib-dynamodb";
-import { Redis } from '@upstash/redis';
 
 interface InputEvent {
   user_id: string;
@@ -49,11 +48,7 @@ if (!TELEGRAM_BOT_TOKEN) {
 
 const ddbClient = new DynamoDBClient({ region: AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
-const bot = new Bot(TELEGRAM_BOT_TOKEN);
-const redis = new Redis({
-  url: UPSTASH_REDIS_DATABASE_CACHE_ENDPOINT!,
-  token: UPSTASH_REDIS_DATABASE_CACHE_PASSWORD!,
-})
+const bot = new Bot(TELEGRAM_BOT_TOKEN, { client: { sensitiveLogs: true } });
 
 export const handler: Handler<InputEvent, OutputPayload> = async (
   input: InputEvent,
@@ -79,12 +74,20 @@ export const handler: Handler<InputEvent, OutputPayload> = async (
   console.log(`Group chats:`, groupChats);
   const inlineKeyboard = await buildInlineKeyboard(broadcasterNames3, groupChats);
 
-  try {   
-    await bot.api.sendMessage(
-      input.user_id,
-      `You are logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a>. You can join the following groups:`,
-      { reply_markup: inlineKeyboard, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
-    );
+  try {
+    if (groupIds2.length > 0) {
+      await bot.api.sendMessage(
+        input.user_id,
+        `You are logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a>. You can join the following groups:`,
+        { reply_markup: inlineKeyboard, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
+      );
+    } else {
+      console.log('No groups to join');
+      await bot.api.sendMessage(
+        input.user_id,
+        `You are logged in as <a href="https://twitch.tv/${input.twitch_display_name}">${input.twitch_display_name}</a>. But you are not subscribed to any channels.`,
+      );
+    }
   } catch (error) {
     console.error('Error sending message:', error)
     throw new SendingMessageError('Error sending message to user.');
