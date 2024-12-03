@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.9"
   required_providers {
     aws       = { source = "hashicorp/aws", version = "5.73.0" }
-    namecheap = { source = "namecheap/namecheap", version = "2.1.2" }
+    namecheap = { source = "namecheap/namecheap", version = "2.2.0" }
   }
 }
 
